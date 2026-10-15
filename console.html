@@ -100,6 +100,9 @@
     }
     .step-btn:hover { background: #334155; border-color: var(--primary); }
     .step-btn.active { border-color: var(--primary); background: #0369a1; }
+    .step-btn.current { border-color: var(--primary); background: #0369a133; box-shadow: 0 0 10px rgba(56, 189, 248, 0.25); }
+    .step-btn.completed { border-color: #059669; background: #064e3b22; }
+    .step-btn.locked { opacity: 0.45; cursor: not-allowed; pointer-events: none; background: #131b2a; border-color: #1e293b; color: #64748b; }
     .badge {
       font-size: 11px;
       padding: 2px 8px;
@@ -302,38 +305,59 @@
   </div>
 
   <div class="container">
-    <!-- Left Scenarios Control -->
+    <!-- Left Scenarios Control (Guided Step-by-Step Wizard) -->
     <div class="card">
-      <h2>Step-by-Step Flow Execution</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="margin: 0;">Guided Flow Wizard</h2>
+        <button class="preset-btn" onclick="resetWizard()" title="Reset flow back to beginning" style="font-size: 11px;">↺ Reset</button>
+      </div>
+      <p style="font-size: 11.5px; color: var(--muted); margin: 0 0 14px; line-height: 1.4;">
+        Steps execute strictly in sequence. Complete each step to unlock the next. You can click back to prior completed steps anytime.
+      </p>
 
-      <button class="step-btn" onclick="runScenario('discovery')">
-        <span>1. Discover Protected Resource</span>
+      <button id="btnStep0" class="step-btn current" onclick="selectStep(0)">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="iconStep0" style="font-size: 13px;">⚡</span>
+          <span>1. Discover Resource</span>
+        </div>
         <span class="badge badge-blue">RFC 9728</span>
       </button>
 
-      <button class="step-btn" onclick="runScenario('login')">
-        <span>2. Corporate SSO Sign-In</span>
+      <button id="btnStep1" class="step-btn locked" onclick="selectStep(1)">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="iconStep1" style="font-size: 13px;">🔒</span>
+          <span>2. Corporate SSO Sign-In</span>
+        </div>
         <span class="badge badge-green">In-Page SSO</span>
       </button>
 
-      <button class="step-btn" onclick="runScenario('tools_list')">
-        <span>3. List Available Tools</span>
+      <button id="btnStep2" class="step-btn locked" onclick="selectStep(2)">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="iconStep2" style="font-size: 13px;">🔒</span>
+          <span>3. Discover SaaS Tools</span>
+        </div>
         <span class="badge badge-purple">RFC 8693</span>
       </button>
 
-      <button class="step-btn" onclick="runScenario('tools_call')">
-        <span>4. Execute Tool Call</span>
+      <button id="btnStep3" class="step-btn locked" onclick="selectStep(3)">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="iconStep3" style="font-size: 13px;">🔒</span>
+          <span>4. Execute Tool Call</span>
+        </div>
         <span class="badge badge-purple">Down-Scoped</span>
       </button>
 
-      <button class="step-btn" style="border-color:#b91c1c; background:#450a0a;" onclick="runScenario('test_direct')">
-        <span>5. Security Test (Direct SaaS)</span>
+      <button id="btnStep4" class="step-btn locked" onclick="selectStep(4)">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="iconStep4" style="font-size: 13px;">🔒</span>
+          <span>5. Direct Security Test</span>
+        </div>
         <span class="badge" style="background:#ef4444; color:#fff;">Expect 403</span>
       </button>
 
       <div class="legend">
         <strong>Session Authentication State:</strong>
-        <div id="authStatus" style="margin-top: 6px; color: var(--muted);">Not Authenticated (Click Step 2 to sign in)</div>
+        <div id="authStatus" style="margin-top: 6px; color: var(--muted);">Not Authenticated (Unlocks at Step 2)</div>
         <div id="tokenBox" class="token-display"></div>
       </div>
     </div>
@@ -363,11 +387,20 @@
         <span style="font-size: 13px; font-weight: 600; color: #94a3b8;" id="consoleTitle">Interactive Network Trace</span>
         <span style="font-size: 12px; color: #64748b;" id="statusIndicator">Ready</span>
       </div>
-      <pre id="outputConsole">// Click any step on the left to execute live network calls across localhost:
+      <pre id="outputConsole">// Click "Execute Step 1 ⚡" below or on the left to start the guided sequence:
 // - Gateway:    http://127.0.0.1:8080
 // - STS / IdP:  http://127.0.0.1:8081
 // - MCP Server: http://127.0.0.1:8082
 </pre>
+
+      <!-- Wizard Navigation Action Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; background: #111827; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px;">
+        <button id="btnWizardPrev" class="preset-btn" onclick="wizardPrev()" disabled style="opacity: 0.4; cursor: not-allowed;">◀ Previous Step</button>
+        <span id="wizardStepInfo" style="font-size: 12px; font-weight: 600; color: #38bdf8;">Step 1 of 5: Discover Protected Resource</span>
+        <button id="btnWizardAction" class="step-btn" onclick="executeCurrentStep()" style="width: auto; margin: 0; padding: 8px 18px; background: #0284c7; border-color: #0284c7; font-size: 13px;">
+          Execute Step 1 ⚡
+        </button>
+      </div>
     </div>
   </div>
 
@@ -479,6 +512,128 @@
         idp: (document.getElementById('inputIdp').value || 'http://127.0.0.1:8081').trim().replace(/\/+$/, ''),
         backend: (document.getElementById('inputBackend').value || 'http://127.0.0.1:8082').trim().replace(/\/+$/, '')
       };
+    }
+
+    const STEP_DEFS = [
+      { id: 'discovery', label: '1. Discover Resource', desc: 'Step 1 of 5: Discover Protected Resource (RFC 9728)' },
+      { id: 'login', label: '2. Corporate SSO Sign-In', desc: 'Step 2 of 5: Corporate Single Sign-On (OAuth PKCE)' },
+      { id: 'tools_list', label: '3. Discover SaaS Tools', desc: 'Step 3 of 5: List Tools with RFC 8693 Token Exchange' },
+      { id: 'tools_call', label: '4. Execute Tool Call', desc: 'Step 4 of 5: Down-Scoped Generative Tool Execution' },
+      { id: 'test_direct', label: '5. Direct Security Test', desc: 'Step 5 of 5: Direct SaaS Security Verification' }
+    ];
+
+    let activeStepIdx = 0;
+    let unlockedStepIdx = 0;
+    let stepCompleted = [false, false, false, false, false];
+    let stepOutputHistory = {};
+
+    function updateWizardUI() {
+      for (let i = 0; i < 5; i++) {
+        const btn = document.getElementById(`btnStep${i}`);
+        const icon = document.getElementById(`iconStep${i}`);
+        if (!btn || !icon) continue;
+
+        btn.classList.remove('current', 'completed', 'locked');
+
+        if (i === activeStepIdx) {
+          btn.classList.add('current');
+          icon.innerText = stepCompleted[i] ? '✓' : '⚡';
+        } else if (stepCompleted[i] || i <= unlockedStepIdx) {
+          if (stepCompleted[i]) {
+            btn.classList.add('completed');
+            icon.innerText = '✓';
+          } else {
+            icon.innerText = '⚡';
+          }
+        } else {
+          btn.classList.add('locked');
+          icon.innerText = '🔒';
+        }
+      }
+
+      const prevBtn = document.getElementById('btnWizardPrev');
+      if (prevBtn) {
+        if (activeStepIdx > 0) {
+          prevBtn.disabled = false;
+          prevBtn.style.opacity = '1';
+          prevBtn.style.cursor = 'pointer';
+        } else {
+          prevBtn.disabled = true;
+          prevBtn.style.opacity = '0.4';
+          prevBtn.style.cursor = 'not-allowed';
+        }
+      }
+
+      const infoEl = document.getElementById('wizardStepInfo');
+      if (infoEl) infoEl.innerText = STEP_DEFS[activeStepIdx].desc;
+
+      const actionBtn = document.getElementById('btnWizardAction');
+      if (actionBtn) {
+        if (stepCompleted[activeStepIdx] && activeStepIdx < unlockedStepIdx) {
+          actionBtn.innerText = `Continue: Step ${activeStepIdx + 2} ▶`;
+          actionBtn.style.background = '#059669';
+          actionBtn.style.borderColor = '#059669';
+        } else if (stepCompleted[activeStepIdx]) {
+          actionBtn.innerText = `Re-run Step ${activeStepIdx + 1} ↺`;
+          actionBtn.style.background = '#273549';
+          actionBtn.style.borderColor = '#475569';
+        } else {
+          actionBtn.innerText = `Execute Step ${activeStepIdx + 1} ⚡`;
+          actionBtn.style.background = '#0284c7';
+          actionBtn.style.borderColor = '#0284c7';
+        }
+      }
+    }
+
+    function selectStep(idx) {
+      if (idx > unlockedStepIdx && !stepCompleted[idx]) {
+        return; // Locked! Cannot skip ahead
+      }
+      activeStepIdx = idx;
+      if (stepOutputHistory[idx]) {
+        document.getElementById('outputConsole').textContent = stepOutputHistory[idx];
+      }
+      updateWizardUI();
+    }
+
+    function wizardPrev() {
+      if (activeStepIdx > 0) {
+        selectStep(activeStepIdx - 1);
+      }
+    }
+
+    function executeCurrentStep() {
+      if (stepCompleted[activeStepIdx] && activeStepIdx < unlockedStepIdx) {
+        selectStep(activeStepIdx + 1);
+        return;
+      }
+      runScenario(STEP_DEFS[activeStepIdx].id);
+    }
+
+    function onStepSuccess(idx) {
+      stepCompleted[idx] = true;
+      stepOutputHistory[idx] = document.getElementById('outputConsole').textContent;
+      if (unlockedStepIdx === idx && unlockedStepIdx < 4) {
+        unlockedStepIdx = idx + 1;
+      }
+      updateWizardUI();
+    }
+
+    function resetWizard() {
+      currentUserJwt = null;
+      activeStepIdx = 0;
+      unlockedStepIdx = 0;
+      stepCompleted = [false, false, false, false, false];
+      stepOutputHistory = {};
+
+      document.getElementById('authStatus').innerHTML = '<span style="color:var(--muted);">Not Authenticated (Unlocks at Step 2)</span>';
+      document.getElementById('tokenBox').style.display = 'none';
+      document.getElementById('outputConsole').textContent = `// Wizard reset to beginning. Click "Execute Step 1 ⚡" to start:\n// - Gateway:    http://127.0.0.1:8080\n// - STS / IdP:  http://127.0.0.1:8081\n// - MCP Server: http://127.0.0.1:8082\n`;
+      document.getElementById('statusIndicator').innerText = 'Ready';
+      document.getElementById('consoleTitle').innerText = 'Interactive Network Trace';
+
+      resetNodes();
+      updateWizardUI();
     }
 
     function showAgentTab(tab) {
@@ -702,6 +857,7 @@
 
         consoleEl.textContent = `=== STEP 2: IN-PAGE SSO AUTHENTICATION COMPLETE ===\n1. User submitted credentials at Corporate IdP in-page modal.\n2. In-flight PKCE Authorization code issued: ${code}\n3. Token exchanged via POST ${ep.idp}/oauth2/v1/token (grant_type=authorization_code)\n\n=== STS USER JWT ISSUED ===\nHTTP/1.1 200 OK\n${JSON.stringify(tokenData, null, 2)}\n\n[SUCCESS] Corporate User JWT acquired! Claims:\n- Subject: "${username}"\n- Audience: "enterprise-api-gateway"\n- Roles: ["engineering", "internal-developer"]`;
         statusEl.innerText = "User JWT Active";
+        onStepSuccess(1);
       } catch (err) {
         consoleEl.textContent = `Error during in-page SSO authentication:\n${err.message}\n\nMake sure Enterprise STS is running on ${ep.idp} (run 'make console' in terminal).`;
         statusEl.innerText = "Auth Failed";
@@ -755,6 +911,7 @@
             `Discovered Supported Scopes: ${(data.scopes_supported || []).join(', ')}`;
 
           statusEl.innerHTML = `<span style="color: #10b981;">✓ 401 Challenge (${latency}ms)</span>`;
+          onStepSuccess(0);
         } catch (e) {
           consoleEl.textContent = `[${now()}] ⚠️ Gateway Connection Refused (${ep.gateway})\n\nServices are currently OFFLINE on localhost.\nTo start all services, run 'make console' in your terminal.`;
           statusEl.innerText = "Gateway Offline";
@@ -824,6 +981,7 @@
             `[SUCCESS] Real network call completed in ${latency}ms. SaaS MCP server received a valid vendor-scoped JWT without seeing user credentials!`;
 
           statusEl.innerHTML = `<span style="color: #10b981;">✓ 200 OK (${latency}ms)</span>`;
+          onStepSuccess(2);
         } catch (e) {
           consoleEl.textContent = `[${now()}] Error during tools/list: ${e.message}\nMake sure all local services are running with 'make console'.`;
           statusEl.innerText = "Call Failed";
@@ -890,6 +1048,7 @@
             `[SUCCESS] Real tool execution finished in ${latency}ms under Apigee governance and audit logging!`;
 
           statusEl.innerHTML = `<span style="color: #10b981;">✓ Succeeded (${latency}ms)</span>`;
+          onStepSuccess(3);
         } catch (e) {
           consoleEl.textContent = `[${now()}] Error executing tool call: ${e.message}`;
           statusEl.innerText = "Execution Failed";
@@ -938,6 +1097,7 @@
             `[VERIFIED] Security boundary enforced in ${latency}ms! The SaaS MCP server rejected the un-exchanged corporate token. Direct access is blocked.`;
 
           statusEl.innerHTML = `<span style="color: #ef4444;">✓ HTTP 403 Forbidden (${latency}ms)</span>`;
+          onStepSuccess(4);
         } catch (e) {
           consoleEl.textContent = `[${now()}] Error connecting directly to SaaS backend: ${e.message}`;
           statusEl.innerText = "Connection Failed";
@@ -948,6 +1108,7 @@
     // Auto-initialize query parameters & start periodic health check
     window.addEventListener('DOMContentLoaded', () => {
       initFromQueryParams();
+      updateWizardUI();
       checkHealth();
       setInterval(checkHealth, 3500);
     });

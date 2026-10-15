@@ -163,9 +163,12 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 
 ```text
 .
-├── Makefile                # setup, test, bundle, clean
+├── Makefile                # setup, test, studio, bundle, clean
 ├── pyproject.toml          # Test harness dependencies (FastAPI, FastMCP, Pytest)
 ├── architecture_flow.mmd   # Source Mermaid sequence diagram
+├── studio.html             # Interactive visual X-ray dashboard for live testing
+├── run_studio.py           # One-command studio service runner
+├── client_bridge.py        # Stdio-to-HTTP MCP bridge for CLI agents & IDEs
 │
 ├── apiproxy/               # Production Apigee API Proxy Bundle
 │   ├── apiproxy.xml
@@ -173,7 +176,7 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 │   ├── policies/           # VerifyJWT, ServiceCallout (RFC 8693), ExtractVariables, AssignMessage
 │   └── targets/default.xml # Outbound partner SaaS target endpoint
 │
-├── mock_idp/               # Runnable Enterprise IdP / STS Mock (RFC 8693 & JWKS)
+├── mock_idp/               # Runnable Enterprise IdP / STS Mock (RFC 8693, JWKS & SSO Login)
 │   └── app.py
 ├── mcp_server/             # Runnable External SaaS MCP Server Mock
 │   └── server.py
@@ -183,6 +186,58 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 └── tests/
     └── test_e2e.py         # Automated sociable end-to-end integration test suite
 ```
+
+---
+
+## Interactive Visual Studio (Live Network Demo)
+
+To experience the architecture visually and inspect real HTTP/OAuth traffic in real time:
+
+```bash
+make studio
+```
+
+This launches all three local services on loopback ports (`8080`, `8081`, `8082`) and automatically opens `studio.html` in your default browser.
+
+### Workstation & Browser Compatibility
+* **Cross-Platform:** Works on macOS, Linux, and Windows with Python 3.11+.
+* **Any Modern Browser:** Chrome, Edge, Firefox, or Safari (uses standard ES6 `fetch()`, `window.open()`, and `window.postMessage()`; zero browser extensions required).
+* **Live Network Traffic:** Every click makes real HTTP calls across localhost TCP sockets. Open your browser's Developer Tools (`Network` tab) to inspect the headers, status codes, and JSON-RPC payloads live.
+
+### Step-by-Step Interactive Journey
+
+1. **Step 1: Discover Protected Resource (`RFC 9728`)**
+   - The browser client sends an unauthenticated `GET /.well-known/oauth-protected-resource` to the Apigee Gateway (`:8080`).
+   - Apigee responds with **`HTTP 401 Unauthorized`** and attaches the `WWW-Authenticate` header with the authorization and token endpoints.
+2. **Step 2: Corporate SSO Sign-In (`OAuth 2.0 PKCE`)**
+   - Click "Sign In with SSO". A real browser popup window opens to the **Corporate Identity Provider Sign-In Page** (`:8081/oauth2/v1/authorize`).
+   - Pre-filled with demo credentials (`developer@example.com` / `demo123`).
+   - Clicking "Authenticate" issues an authorization code, exchanges it for a **Corporate User JWT**, and displays the internal employee claims (`sub`, `aud: enterprise-api-gateway`, `roles`).
+3. **Step 3: List Available Tools (`RFC 8693 Token Exchange`)**
+   - The client calls `POST /mcp/v1/tools/list` on Apigee with the Corporate User JWT.
+   - Watch all four architecture nodes illuminate: Apigee intercepts the user token, calls the Enterprise STS (`:8081`) to perform the RFC 8693 token exchange, scrubs internal employee claims, and returns the available tools (`search_catalog`).
+4. **Step 4: Execute Tool Call (`search_catalog`)**
+   - The client invokes `search_catalog` through Apigee.
+   - Apigee injects the down-scoped partner token (`aud: https://mcp.partner-service.example.com`), and the SaaS backend executes the tool and returns the JSON-RPC response.
+5. **Step 5: Security Boundary Enforcement (Negative Test)**
+   - Attempts to send the Corporate User JWT directly to the external partner backend (`:8082`), bypassing Apigee.
+   - The SaaS backend **rejects it with `HTTP 403 Forbidden`** (*"Direct corporate user tokens rejected"*), proving that external partners cannot accept corporate identity tokens.
+
+---
+
+## CLI Agent & IDE Integration (`client_bridge.py`)
+
+You can also connect real coding agents (Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
+
+### Using with Antigravity CLI / Claude Code
+```bash
+# Start background services
+python run_studio.py &
+
+# Run agent prompt through the Apigee Gateway
+antigravity -p "What tools are available from partner-gateway?"
+```
+The bridge automatically checks for a cached corporate token, opens the browser SSO login if needed, and translates stdio JSON-RPC to Apigee Gateway HTTP calls.
 
 ---
 

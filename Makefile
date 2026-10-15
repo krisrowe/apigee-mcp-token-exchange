@@ -3,7 +3,7 @@ PYTHON := $(VENV)/bin/python
 PIP := $(VENV)/bin/pip
 PYTEST := $(VENV)/bin/pytest
 
-.PHONY: setup test run-gateway run-sts run-mcp-server bundle clean
+.PHONY: setup test studio run-gateway run-sts run-mcp-server bundle clean
 
 setup: $(VENV)/bin/activate
 
@@ -15,6 +15,9 @@ $(VENV)/bin/activate: pyproject.toml
 
 test: setup
 	$(PYTHON) -m pytest -v tests/
+
+studio: setup
+	$(PYTHON) run_studio.py
 
 bundle:
 	@mkdir -p dist

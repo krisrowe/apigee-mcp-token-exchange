@@ -152,6 +152,22 @@
       word-break: break-all;
       display: none;
     }
+    .preset-btn {
+      background: #273549;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-btn:hover {
+      background: #334155;
+      border-color: var(--primary);
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -164,6 +180,35 @@
     <div style="text-align: right;">
       <span class="badge badge-green">Zero PII Leakage</span>
       <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Standard IETF RFC 8693 + RFC 9728</div>
+    </div>
+  </div>
+
+  <!-- Dynamic Endpoint Configuration -->
+  <div class="card" style="max-width: 1200px; margin: 0 auto 20px; padding: 16px 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 700; font-size: 13.5px; color: #38bdf8;">⚙️ Target Gateway & Identity Provider Configuration</span>
+        <span style="font-size: 11.5px; color: var(--muted);">(Supports query parameters: <code>?gateway=...&idp=...&backend=...</code>)</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="preset-btn" onclick="applyPreset('local')">Local Mock (Default)</button>
+        <button class="preset-btn" onclick="applyPreset('cloud')">Cloud Apigee X</button>
+        <button class="preset-btn" id="btnCopyUrl" onclick="copyShareableUrl()">📋 Copy Link</button>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+      <div>
+        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Apigee Gateway Ingress (<code>gateway</code>)</label>
+        <input id="inputGateway" type="text" value="http://127.0.0.1:8080" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+      </div>
+      <div>
+        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Enterprise STS / IdP (<code>idp</code>)</label>
+        <input id="inputIdp" type="text" value="http://127.0.0.1:8081" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+      </div>
+      <div>
+        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Target SaaS MCP Server (<code>backend</code>)</label>
+        <input id="inputBackend" type="text" value="http://127.0.0.1:8082" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+      </div>
     </div>
   </div>
 
@@ -228,6 +273,57 @@
   <script>
     let currentUserJwt = null;
 
+    function getEndpoints() {
+      return {
+        gateway: (document.getElementById('inputGateway').value || 'http://127.0.0.1:8080').trim().replace(/\/+$/, ''),
+        idp: (document.getElementById('inputIdp').value || 'http://127.0.0.1:8081').trim().replace(/\/+$/, ''),
+        backend: (document.getElementById('inputBackend').value || 'http://127.0.0.1:8082').trim().replace(/\/+$/, '')
+      };
+    }
+
+    function initFromQueryParams() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('gateway')) document.getElementById('inputGateway').value = params.get('gateway');
+      if (params.has('idp')) document.getElementById('inputIdp').value = params.get('idp');
+      if (params.has('backend')) document.getElementById('inputBackend').value = params.get('backend');
+    }
+
+    function applyPreset(preset) {
+      if (preset === 'local') {
+        document.getElementById('inputGateway').value = 'http://127.0.0.1:8080';
+        document.getElementById('inputIdp').value = 'http://127.0.0.1:8081';
+        document.getElementById('inputBackend').value = 'http://127.0.0.1:8082';
+      } else if (preset === 'cloud') {
+        const cloudHost = prompt('Enter your Cloud Apigee X hostname (e.g. https://api.example.com):', 'https://api.example.com');
+        if (cloudHost) {
+          document.getElementById('inputGateway').value = cloudHost.replace(/\/+$/, '') + '/ai-gateway';
+        }
+      }
+      updateBrowserUrl();
+    }
+
+    function updateBrowserUrl() {
+      const ep = getEndpoints();
+      const params = new URLSearchParams();
+      if (ep.gateway !== 'http://127.0.0.1:8080') params.set('gateway', ep.gateway);
+      if (ep.idp !== 'http://127.0.0.1:8081') params.set('idp', ep.idp);
+      if (ep.backend !== 'http://127.0.0.1:8082') params.set('backend', ep.backend);
+      const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+
+    function copyShareableUrl() {
+      updateBrowserUrl();
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const btn = document.getElementById('btnCopyUrl');
+        btn.innerText = '✓ Copied!';
+        setTimeout(() => { btn.innerText = '📋 Copy Link'; }, 2000);
+      });
+    }
+
+    // Initialize parameters on load
+    window.addEventListener('DOMContentLoaded', initFromQueryParams);
+
     function resetNodes() {
       ['nodeClient', 'nodeGateway', 'nodeSTS', 'nodeBackend'].forEach(id => {
         document.getElementById(id).classList.remove('active-node');
@@ -238,22 +334,23 @@
       const consoleEl = document.getElementById('outputConsole');
       const titleEl = document.getElementById('consoleTitle');
       const statusEl = document.getElementById('statusIndicator');
+      const ep = getEndpoints();
       resetNodes();
 
       if (scenario === 'discovery') {
         titleEl.innerText = "SCENARIO 1: RFC 9728 Discovery Request";
-        statusEl.innerText = "Executing GET /.well-known/oauth-protected-resource...";
+        statusEl.innerText = `Executing GET ${ep.gateway}/.well-known/oauth-protected-resource...`;
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeGateway').classList.add('active-node');
 
         try {
-          const res = await fetch('http://127.0.0.1:8080/.well-known/oauth-protected-resource');
+          const res = await fetch(`${ep.gateway}/.well-known/oauth-protected-resource`);
           const wwwAuth = res.headers.get('WWW-Authenticate') || 'Bearer realm="enterprise-ai-gateway"';
           const data = await res.json();
-          consoleEl.textContent = `=== HTTP INGRESS REQUEST ===\nGET /.well-known/oauth-protected-resource HTTP/1.1\nHost: api-gateway.example.com:8080\nUser-Agent: Enterprise-AI-Agent/2.0\n\n=== APIGEE RESPONSE (RFC 9728 CHALLENGE) ===\nHTTP/1.1 ${res.status} Unauthorized\nWWW-Authenticate: ${wwwAuth}\nContent-Type: application/json\n\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] AI Agent discovered Authorization Server URI and required MCP scopes without pre-configured secrets!`;
+          consoleEl.textContent = `=== HTTP INGRESS REQUEST ===\nGET ${ep.gateway}/.well-known/oauth-protected-resource HTTP/1.1\nUser-Agent: Enterprise-AI-Agent/2.0\n\n=== APIGEE RESPONSE (RFC 9728 CHALLENGE) ===\nHTTP/1.1 ${res.status} Unauthorized\nWWW-Authenticate: ${wwwAuth}\nContent-Type: application/json\n\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] AI Agent discovered Authorization Server URI and required MCP scopes without pre-configured secrets!`;
           statusEl.innerText = "HTTP 401 Expected Challenge";
         } catch (e) {
-          consoleEl.textContent = `Error connecting to Gateway: ${e.message}\nMake sure 'make studio' is running.`;
+          consoleEl.textContent = `Error connecting to Gateway (${ep.gateway}): ${e.message}\nMake sure 'make studio' is running or your Gateway URL is reachable.`;
         }
       }
 
@@ -263,9 +360,9 @@
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeSTS').classList.add('active-node');
 
-        consoleEl.textContent = `=== STEP 2: OPENING CORPORATE SSO LOGIN ===\nLaunching browser authentication window to:\nhttp://127.0.0.1:8081/oauth2/v1/authorize\n\nWaiting for user to submit credentials (developer@example.com / demo123)...`;
+        consoleEl.textContent = `=== STEP 2: OPENING CORPORATE SSO LOGIN ===\nLaunching browser authentication window to:\n${ep.idp}/oauth2/v1/authorize\n\nWaiting for user to submit credentials (developer@example.com / demo123)...`;
 
-        const authWindow = window.open('http://127.0.0.1:8081/oauth2/v1/authorize?client_id=enterprise-ai-agent&redirect_uri=http://127.0.0.1:8081/oauth2/v1/callback', 'sso_login', 'width=460,height=580');
+        const authWindow = window.open(`${ep.idp}/oauth2/v1/authorize?client_id=enterprise-ai-agent&redirect_uri=${encodeURIComponent(ep.idp + '/oauth2/v1/callback')}`, 'sso_login', 'width=460,height=580');
 
         const messageHandler = async (event) => {
           if (event.data && event.data.type === 'sso_auth_code') {
@@ -279,7 +376,7 @@
               body.append('code', code);
               body.append('client_id', 'enterprise-ai-agent');
 
-              const res = await fetch('http://127.0.0.1:8081/oauth2/v1/token', {
+              const res = await fetch(`${ep.idp}/oauth2/v1/token`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body
@@ -291,7 +388,7 @@
               document.getElementById('tokenBox').style.display = 'block';
               document.getElementById('tokenBox').textContent = currentUserJwt.substring(0, 36) + '...';
 
-              consoleEl.textContent = `=== STEP 2: SSO AUTHENTICATION COMPLETE ===\n1. User submitted credentials at Corporate IdP login page.\n2. Authorization code issued: ${code}\n3. Token exchanged via POST /oauth2/v1/token (grant_type=authorization_code)\n\n=== STS USER JWT ISSUED ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Corporate User JWT acquired! Claims:\n- Subject: "developer@example.com"\n- Audience: "enterprise-api-gateway"\n- Roles: ["engineering", "ai-assistants"]`;
+              consoleEl.textContent = `=== STEP 2: SSO AUTHENTICATION COMPLETE ===\n1. User submitted credentials at Corporate IdP login page.\n2. Authorization code issued: ${code}\n3. Token exchanged via POST ${ep.idp}/oauth2/v1/token (grant_type=authorization_code)\n\n=== STS USER JWT ISSUED ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Corporate User JWT acquired! Claims:\n- Subject: "developer@example.com"\n- Audience: "enterprise-api-gateway"\n- Roles: ["engineering", "ai-assistants"]`;
               statusEl.innerText = "User JWT Active";
             } catch (err) {
               consoleEl.textContent = `Error exchanging auth code: ${err.message}`;
@@ -315,7 +412,7 @@
         document.getElementById('nodeBackend').classList.add('active-node');
 
         try {
-          const res = await fetch('http://127.0.0.1:8080/mcp/v1/tools/list', {
+          const res = await fetch(`${ep.gateway}/mcp/v1/tools/list`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${currentUserJwt}`,
@@ -324,7 +421,7 @@
             body: JSON.stringify({})
           });
           const data = await res.json();
-          consoleEl.textContent = `=== 1. INGRESS CALL TO APIGEE GATEWAY ===\nPOST /ai-gateway/mcp/v1/tools/list HTTP/1.1\nHost: api-gateway.example.com:8080\nAuthorization: Bearer <user_corporate_jwt>\n\n=== 2. APIGEE EXECUTES RFC 8693 SERVICE CALLOUT ===\nPOST http://127.0.0.1:8081/oauth2/v1/token\ngrant_type=urn:ietf:params:oauth:grant-type:token-exchange\nsubject_token=<user_corporate_jwt>\naudience=https://mcp.partner-service.example.com\n\n=== 3. OUTBOUND CALL TO EXTERNAL SAAS BACKEND ===\nPOST http://127.0.0.1:8082/mcp/v1/tools/list\nAuthorization: Bearer <exchanged_partner_token>\nX-Correlation-Id: trace-12345\n[NOTICE] All employee PII (email, username, internal groups) was scrubbed by Apigee AssignMessage policy!\n\n=== 4. SAAS PARTNER JSON-RPC RESPONSE ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Tools retrieved without developer laptop holding external partner credentials!`;
+          consoleEl.textContent = `=== 1. INGRESS CALL TO APIGEE GATEWAY ===\nPOST ${ep.gateway}/mcp/v1/tools/list HTTP/1.1\nAuthorization: Bearer <user_corporate_jwt>\n\n=== 2. APIGEE EXECUTES RFC 8693 SERVICE CALLOUT ===\nPOST ${ep.idp}/oauth2/v1/token\ngrant_type=urn:ietf:params:oauth:grant-type:token-exchange\nsubject_token=<user_corporate_jwt>\naudience=https://mcp.partner-service.example.com\n\n=== 3. OUTBOUND CALL TO EXTERNAL SAAS BACKEND ===\nPOST ${ep.backend}/mcp/v1/tools/list\nAuthorization: Bearer <exchanged_partner_token>\nX-Correlation-Id: trace-12345\n[NOTICE] All employee PII (email, username, internal groups) was scrubbed by Apigee AssignMessage policy!\n\n=== 4. SAAS PARTNER JSON-RPC RESPONSE ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Tools retrieved without developer laptop holding external partner credentials!`;
           statusEl.innerText = "Tools List Exchanged & Returned";
         } catch (e) {
           consoleEl.textContent = `Error during tools listing: ${e.message}`;
@@ -357,7 +454,7 @@
             }
           };
 
-          const res = await fetch('http://127.0.0.1:8080/mcp/v1/tools/call', {
+          const res = await fetch(`${ep.gateway}/mcp/v1/tools/call`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${currentUserJwt}`,
@@ -366,7 +463,7 @@
             body: JSON.stringify(payload)
           });
           const data = await res.json();
-          consoleEl.textContent = `=== INGRESS TOOL CALL VIA APIGEE ===\nPOST /ai-gateway/mcp/v1/tools/call HTTP/1.1\nHost: api-gateway.example.com:8080\nAuthorization: Bearer <user_corporate_jwt>\nPayload: ${JSON.stringify(payload, null, 2)}\n\n=== EXCHANGED PARTNER CALL & BACKEND RESULT ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[VERIFIED] Target SaaS backend executed tool successfully under down-scoped partner actor identity!`;
+          consoleEl.textContent = `=== INGRESS TOOL CALL VIA APIGEE ===\nPOST ${ep.gateway}/mcp/v1/tools/call HTTP/1.1\nAuthorization: Bearer <user_corporate_jwt>\nPayload: ${JSON.stringify(payload, null, 2)}\n\n=== EXCHANGED PARTNER CALL & BACKEND RESULT ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[VERIFIED] Target SaaS backend executed tool successfully under down-scoped partner actor identity!`;
           statusEl.innerText = "Tool Call Complete";
         } catch (e) {
           consoleEl.textContent = `Error executing tool: ${e.message}`;
@@ -379,12 +476,12 @@
           return;
         }
         titleEl.innerText = "SCENARIO 5: Security Boundary Enforcement (Direct SaaS Call)";
-        statusEl.innerText = "Attempting to bypass Apigee and call SaaS directly with corporate token...";
+        statusEl.innerText = `Attempting to bypass Apigee and call SaaS directly at ${ep.backend}...`;
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeBackend').classList.add('active-node');
 
         try {
-          const res = await fetch('http://127.0.0.1:8082/mcp/v1/tools/list', {
+          const res = await fetch(`${ep.backend}/mcp/v1/tools/list`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${currentUserJwt}`,
@@ -392,7 +489,7 @@
             }
           });
           const data = await res.json();
-          consoleEl.textContent = `=== DIRECT CALL TO EXTERNAL SAAS BACKEND ===\nPOST http://127.0.0.1:8082/mcp/v1/tools/list HTTP/1.1\nAuthorization: Bearer <corporate_user_jwt>\n\n=== SAAS PARTNER RESPONSE ===\nHTTP/1.1 ${res.status} ${res.statusText}\n${JSON.stringify(data, null, 2)}\n\n[SECURITY SUCCESS] The SaaS backend REJECTED direct presentation of the corporate token because it lacks the partner audience! Access is only possible through Apigee's brokered token exchange.`;
+          consoleEl.textContent = `=== DIRECT CALL TO EXTERNAL SAAS BACKEND ===\nPOST ${ep.backend}/mcp/v1/tools/list HTTP/1.1\nAuthorization: Bearer <corporate_user_jwt>\n\n=== SAAS PARTNER RESPONSE ===\nHTTP/1.1 ${res.status} ${res.statusText}\n${JSON.stringify(data, null, 2)}\n\n[SECURITY SUCCESS] The SaaS backend REJECTED direct presentation of the corporate token because it lacks the partner audience! Access is only possible through Apigee's brokered token exchange.`;
           statusEl.innerText = "HTTP 403 Forbidden (Blocked)";
         } catch (e) {
           consoleEl.textContent = `Call failed as expected: ${e.message}`;

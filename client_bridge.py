@@ -166,6 +166,16 @@ def handle_jsonrpc(req: dict, token: str) -> dict:
         }
 
 def main():
+    import argparse
+    global GATEWAY_URL, IDP_URL
+    parser = argparse.ArgumentParser(description="Enterprise MCP Gateway Client Bridge")
+    parser.add_argument("--gateway", default=GATEWAY_URL, help="Apigee Gateway Ingress URL (default: %(default)s)")
+    parser.add_argument("--idp", default=IDP_URL, help="Enterprise STS / IdP URL (default: %(default)s)")
+    args, unknown = parser.parse_known_args()
+
+    GATEWAY_URL = args.gateway.rstrip("/")
+    IDP_URL = args.idp.rstrip("/")
+
     token = ensure_token()
 
     for line in sys.stdin:

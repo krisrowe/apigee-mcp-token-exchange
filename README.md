@@ -204,6 +204,25 @@ This launches all three local services on loopback ports (`8080`, `8081`, `8082`
 * **Any Modern Browser:** Chrome, Edge, Firefox, or Safari (uses standard ES6 `fetch()`, `window.open()`, and `window.postMessage()`; zero browser extensions required).
 * **Live Network Traffic:** Every click makes real HTTP calls across localhost TCP sockets. Open your browser's Developer Tools (`Network` tab) to inspect the headers, status codes, and JSON-RPC payloads live.
 
+### Testing Flexible Environments & Custom Gateways (Query Parameters)
+The studio supports dynamic URL query parameters so you can toggle between your local simulation and real cloud environments with zero code modifications:
+
+| Query Parameter | Description | Default Value |
+| :--- | :--- | :--- |
+| **`?gateway=`** | Ingress Apigee Gateway URL | `http://127.0.0.1:8080` |
+| **`?idp=`** | Corporate Identity Provider / STS Base URL | `http://127.0.0.1:8081` |
+| **`?backend=`** | Target External SaaS MCP Server Base URL | `http://127.0.0.1:8082` |
+
+**Example Scenarios:**
+* **Testing Live Cloud Apigee X:**  
+  Load the studio with your Apigee cloud ingress endpoint:  
+  `studio.html?gateway=https://api.yourcompany.com/ai-gateway`
+* **Testing Real Okta / Entra ID:**  
+  Point the studio to your corporate IdP:  
+  `studio.html?idp=https://dev-xxxx.okta.com`
+* **One-Click Presets & Shareable Links:**  
+  Use the **Presets** buttons in the studio header (`Local Mock`, `Cloud Apigee X`) or click **📋 Copy Link** to share the exact test configuration with colleagues.
+
 ### Step-by-Step Interactive Journey
 
 1. **Step 1: Discover Protected Resource (`RFC 9728`)**

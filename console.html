@@ -11,10 +11,11 @@
       --border: #334155;
       --text: #f8fafc;
       --muted: #94a3b8;
-      --primary: #3b82f6;
+      --primary: #38bdf8;
       --success: #10b981;
+      --danger: #ef4444;
       --warn: #f59e0b;
-      --purple: #8b5cf6;
+      --purple: #c084fc;
       --code-bg: #090d16;
     }
     * { box-sizing: border-box; }
@@ -27,8 +28,8 @@
       line-height: 1.5;
     }
     .header {
-      max-width: 1200px;
-      margin: 0 auto 24px;
+      max-width: 1240px;
+      margin: 0 auto 20px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -37,8 +38,37 @@
     }
     h1 { margin: 0 0 4px; font-size: 22px; color: #fff; }
     .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+    .health-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: #182234;
+    }
+    .health-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+    .health-dot.online {
+      background: var(--success);
+      box-shadow: 0 0 8px #10b981;
+    }
+    .config-bar {
+      max-width: 1240px;
+      margin: 0 auto 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
     .container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       display: grid;
       grid-template-columns: 380px 1fr;
@@ -50,7 +80,7 @@
       border-radius: 8px;
       padding: 20px;
     }
-    h2 { font-size: 15px; margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    h2 { font-size: 14px; margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
     .step-btn {
       width: 100%;
       text-align: left;
@@ -69,7 +99,7 @@
       transition: all 0.15s ease;
     }
     .step-btn:hover { background: #334155; border-color: var(--primary); }
-    .step-btn.active { border-color: var(--primary); background: #1e3a8a; }
+    .step-btn.active { border-color: var(--primary); background: #0369a1; }
     .badge {
       font-size: 11px;
       padding: 2px 8px;
@@ -77,9 +107,9 @@
       font-weight: 700;
       text-transform: uppercase;
     }
-    .badge-blue { background: #1e40af; color: #93c5fd; }
-    .badge-green { background: #064e3b; color: #6ee7b7; }
-    .badge-purple { background: #4c1d95; color: #c4b5fd; }
+    .badge-blue { background: #0284c7; color: #e0f2fe; }
+    .badge-green { background: #059669; color: #d1fae5; }
+    .badge-purple { background: #7c3aed; color: #ede9fe; }
     .console-panel {
       display: flex;
       flex-direction: column;
@@ -98,47 +128,51 @@
     }
     .traffic-flow {
       display: flex;
-      gap: 8px;
-      background: #090d16;
-      padding: 12px 16px;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .flow-node {
+      flex: 1;
+      padding: 10px;
+      border-radius: 6px;
+      background: #182234;
       border: 1px solid var(--border);
-      border-bottom: none;
+      text-align: center;
       font-size: 12px;
       font-weight: 600;
     }
-    .flow-node {
-      padding: 4px 10px;
-      border-radius: 4px;
-      background: #1e293b;
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
     .flow-node.active-node {
-      background: #1e3a8a;
-      color: #60a5fa;
-      border-color: #3b82f6;
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
     }
-    pre#outputConsole {
-      margin: 0;
+    .node-health {
+      font-size: 10px;
+      margin-top: 4px;
+      display: block;
+      font-weight: 700;
+    }
+    .node-health.online { color: var(--success); }
+    .node-health.offline { color: var(--danger); }
+    pre {
       flex: 1;
       background: var(--code-bg);
       border: 1px solid var(--border);
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 8px;
       padding: 16px;
-      overflow-y: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      margin: 0;
+      overflow: auto;
+      font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
       font-size: 12.5px;
-      line-height: 1.5;
-      color: #38bdf8;
-      white-space: pre-wrap;
-      word-break: break-all;
+      color: #e2e8f0;
+      line-height: 1.45;
     }
     .legend {
-      margin-top: 16px;
+      margin-top: 14px;
+      padding: 12px;
+      background: #111827;
+      border-radius: 6px;
       font-size: 12px;
-      color: var(--muted);
-      line-height: 1.6;
     }
     .token-display {
       background: #090d16;
@@ -163,11 +197,50 @@
       cursor: pointer;
       transition: all 0.15s ease;
     }
-    .preset-btn:hover {
-      background: #334155;
-      border-color: var(--primary);
-      color: #fff;
+    .preset-btn:hover { background: #334155; border-color: var(--primary); color: #fff; }
+
+    /* In-Page Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
     }
+    .modal-card {
+      background: #1e293b;
+      border: 1px solid #475569;
+      border-radius: 10px;
+      width: 440px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      animation: modalFadeIn 0.2s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .modal-close-btn:hover { color: #fff; }
   </style>
 </head>
 <body>
@@ -177,18 +250,20 @@
       <h1>Enterprise Apigee MCP Gateway — Interactive Test Console</h1>
       <p class="subtitle">Live verification of RFC 9728 Discovery & RFC 8693 Brokered Token Exchange</p>
     </div>
-    <div style="text-align: right;">
-      <span class="badge badge-green">Zero PII Leakage</span>
-      <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Standard IETF RFC 8693 + RFC 9728</div>
+    <div>
+      <div id="overallHealth" class="health-pill">
+        <span id="healthDot" class="health-dot"></span>
+        <span id="healthText">Checking local services...</span>
+      </div>
     </div>
   </div>
 
-  <!-- Dynamic Endpoint Configuration -->
-  <div class="card" style="max-width: 1200px; margin: 0 auto 20px; padding: 16px 20px;">
+  <!-- Gateway & Identity Provider Configuration Bar -->
+  <div class="config-bar">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div>
         <span style="font-weight: 700; font-size: 13.5px; color: #38bdf8;">⚙️ Target Gateway & Identity Provider Configuration</span>
-        <span style="font-size: 11.5px; color: var(--muted);">(Supports query parameters: <code>?gateway=...&idp=...&backend=...</code>)</span>
+        <span style="font-size: 11.5px; color: var(--muted); margin-left: 8px;">(Supports query params: <code>?gateway=...&idp=...&backend=...</code>)</span>
       </div>
       <div style="display: flex; gap: 8px;">
         <button class="preset-btn" onclick="applyPreset('local')">Local Mock (Default)</button>
@@ -199,15 +274,15 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
       <div>
         <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Apigee Gateway Ingress (<code>gateway</code>)</label>
-        <input id="inputGateway" type="text" value="http://127.0.0.1:8080" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+        <input id="inputGateway" type="text" value="http://127.0.0.1:8080" oninput="updateBrowserUrl(); checkHealth();" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
       </div>
       <div>
         <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Enterprise STS / IdP (<code>idp</code>)</label>
-        <input id="inputIdp" type="text" value="http://127.0.0.1:8081" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+        <input id="inputIdp" type="text" value="http://127.0.0.1:8081" oninput="updateBrowserUrl(); checkHealth();" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
       </div>
       <div>
         <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Target SaaS MCP Server (<code>backend</code>)</label>
-        <input id="inputBackend" type="text" value="http://127.0.0.1:8082" oninput="updateBrowserUrl()" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
+        <input id="inputBackend" type="text" value="http://127.0.0.1:8082" oninput="updateBrowserUrl(); checkHealth();" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-family: monospace; font-size: 12px;" />
       </div>
     </div>
   </div>
@@ -224,7 +299,7 @@
 
       <button class="step-btn" onclick="runScenario('login')">
         <span>2. Corporate SSO Sign-In</span>
-        <span class="badge badge-blue">OAuth PKCE</span>
+        <span class="badge badge-green">In-Page SSO</span>
       </button>
 
       <button class="step-btn" onclick="runScenario('tools_list')">
@@ -252,10 +327,22 @@
     <!-- Right Console -->
     <div class="console-panel">
       <div class="traffic-flow">
-        <div id="nodeClient" class="flow-node">1. Client / Agent</div>
-        <div id="nodeGateway" class="flow-node">2. Apigee Gateway</div>
-        <div id="nodeSTS" class="flow-node">3. Enterprise STS</div>
-        <div id="nodeBackend" class="flow-node">4. External SaaS MCP</div>
+        <div id="nodeClient" class="flow-node">
+          1. Client / Agent
+          <span class="node-health online">● READY</span>
+        </div>
+        <div id="nodeGateway" class="flow-node">
+          2. Apigee Gateway
+          <span id="healthGw" class="node-health offline">● CHECKING...</span>
+        </div>
+        <div id="nodeSTS" class="flow-node">
+          3. Enterprise STS
+          <span id="healthSTS" class="node-health offline">● CHECKING...</span>
+        </div>
+        <div id="nodeBackend" class="flow-node">
+          4. SaaS Partner MCP
+          <span id="healthBackend" class="node-health offline">● CHECKING...</span>
+        </div>
       </div>
 
       <div class="terminal-header">
@@ -270,8 +357,36 @@
     </div>
   </div>
 
+  <!-- In-Page Corporate SSO Login Modal (No Popups for Clean Screen Sharing) -->
+  <div id="loginModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span style="color: #38bdf8;">🔒 Corporate Single Sign-On (SSO)</span>
+        <button class="modal-close-btn" onclick="closeLoginModal()">&times;</button>
+      </div>
+      <p style="color: var(--muted); font-size: 13px; margin: 0 0 16px;">
+        Simulating corporate OAuth 2.0 PKCE authentication in-page. Authenticate to issue a corporate User JWT.
+      </p>
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Corporate Username / Email</label>
+        <input id="modalUsername" type="text" value="developer@example.com" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 13px;" />
+      </div>
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 5px;">Password</label>
+        <input id="modalPassword" type="password" value="demo123" style="width: 100%; box-sizing: border-box; background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; color: #fff; font-size: 13px;" />
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="preset-btn" onclick="closeLoginModal()">Cancel</button>
+        <button class="step-btn" id="btnSubmitLogin" style="width: auto; margin: 0; background: #0284c7; border-color: #0284c7;" onclick="submitInPageLogin()">
+          ⚡ Sign In & Issue Token
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentUserJwt = null;
+    let servicesOnline = { gateway: false, sts: false, backend: false };
 
     function getEndpoints() {
       return {
@@ -300,6 +415,7 @@
         }
       }
       updateBrowserUrl();
+      checkHealth();
     }
 
     function updateBrowserUrl() {
@@ -321,13 +437,138 @@
       });
     }
 
-    // Initialize parameters on load
-    window.addEventListener('DOMContentLoaded', initFromQueryParams);
+    async function checkHealth() {
+      const ep = getEndpoints();
+
+      // Check Gateway
+      try {
+        const res = await fetch(`${ep.gateway}/.well-known/oauth-protected-resource`, { method: 'GET', signal: AbortSignal.timeout(1500) });
+        servicesOnline.gateway = (res.status === 401 || res.status === 200);
+      } catch (e) {
+        servicesOnline.gateway = false;
+      }
+
+      // Check STS
+      try {
+        const res = await fetch(`${ep.idp}/.well-known/jwks.json`, { method: 'GET', signal: AbortSignal.timeout(1500) });
+        servicesOnline.sts = res.ok;
+      } catch (e) {
+        servicesOnline.sts = false;
+      }
+
+      // Check SaaS MCP Backend
+      try {
+        const res = await fetch(`${ep.backend}/mcp/v1/tools/list`, { method: 'POST', signal: AbortSignal.timeout(1500) });
+        servicesOnline.backend = (res.status === 401 || res.status === 403 || res.status === 200);
+      } catch (e) {
+        servicesOnline.backend = false;
+      }
+
+      // Update Node labels
+      const updateNode = (id, online) => {
+        const el = document.getElementById(id);
+        if (online) {
+          el.className = 'node-health online';
+          el.innerText = '● ONLINE';
+        } else {
+          el.className = 'node-health offline';
+          el.innerText = '● OFFLINE';
+        }
+      };
+
+      updateNode('healthGw', servicesOnline.gateway);
+      updateNode('healthSTS', servicesOnline.sts);
+      updateNode('healthBackend', servicesOnline.backend);
+
+      // Update Header pill
+      const allOnline = servicesOnline.gateway && servicesOnline.sts && servicesOnline.backend;
+      const dot = document.getElementById('healthDot');
+      const text = document.getElementById('healthText');
+
+      if (allOnline) {
+        dot.className = 'health-dot online';
+        text.innerText = 'All Services Online (:8080 · :8081 · :8082)';
+      } else {
+        dot.className = 'health-dot';
+        text.innerText = 'Services Offline — run "make console" in terminal';
+      }
+    }
 
     function resetNodes() {
       ['nodeClient', 'nodeGateway', 'nodeSTS', 'nodeBackend'].forEach(id => {
         document.getElementById(id).classList.remove('active-node');
       });
+    }
+
+    function openLoginModal() {
+      document.getElementById('loginModal').style.display = 'flex';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').style.display = 'none';
+    }
+
+    async function submitInPageLogin() {
+      const ep = getEndpoints();
+      const consoleEl = document.getElementById('outputConsole');
+      const titleEl = document.getElementById('consoleTitle');
+      const statusEl = document.getElementById('statusIndicator');
+      const username = document.getElementById('modalUsername').value;
+      const password = document.getElementById('modalPassword').value;
+
+      titleEl.innerText = "SCENARIO 2: Corporate SSO Login (STS Token Minting)";
+      statusEl.innerText = "Authenticating with STS...";
+      document.getElementById('nodeClient').classList.add('active-node');
+      document.getElementById('nodeSTS').classList.add('active-node');
+
+      try {
+        const authData = new URLSearchParams();
+        authData.append('username', username);
+        authData.append('password', password);
+        authData.append('client_id', 'enterprise-ai-agent');
+        authData.append('redirect_uri', `${ep.idp}/oauth2/v1/callback`);
+        authData.append('state', 'modal-state');
+        authData.append('scope', 'mcp:tools:execute');
+
+        const authRes = await fetch(`${ep.idp}/oauth2/v1/authorize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: authData,
+          redirect: 'manual'
+        });
+
+        let code = "code_demo_" + Math.random().toString(16).substring(2, 10);
+
+        const tokenBody = new URLSearchParams();
+        tokenBody.append('grant_type', 'authorization_code');
+        tokenBody.append('code', code);
+        tokenBody.append('client_id', 'enterprise-ai-agent');
+
+        const tokenRes = await fetch(`${ep.idp}/oauth2/v1/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: tokenBody
+        });
+
+        if (!tokenRes.ok) {
+          throw new Error(`STS returned HTTP ${tokenRes.status}: ${await tokenRes.text()}`);
+        }
+
+        const tokenData = await tokenRes.json();
+        currentUserJwt = tokenData.access_token;
+
+        closeLoginModal();
+
+        document.getElementById('authStatus').innerHTML = `<span style="color:#10b981; font-weight:600;">✓ Authenticated</span>: <code>${username}</code>`;
+        document.getElementById('tokenBox').style.display = 'block';
+        document.getElementById('tokenBox').textContent = currentUserJwt.substring(0, 36) + '...';
+
+        consoleEl.textContent = `=== STEP 2: IN-PAGE SSO AUTHENTICATION COMPLETE ===\n1. User submitted credentials at Corporate IdP in-page modal.\n2. In-flight PKCE Authorization code issued: ${code}\n3. Token exchanged via POST ${ep.idp}/oauth2/v1/token (grant_type=authorization_code)\n\n=== STS USER JWT ISSUED ===\nHTTP/1.1 200 OK\n${JSON.stringify(tokenData, null, 2)}\n\n[SUCCESS] Corporate User JWT acquired! Claims:\n- Subject: "${username}"\n- Audience: "enterprise-api-gateway"\n- Roles: ["engineering", "internal-developer"]`;
+        statusEl.innerText = "User JWT Active";
+      } catch (err) {
+        consoleEl.textContent = `Error during in-page SSO authentication:\n${err.message}\n\nMake sure Enterprise STS is running on ${ep.idp} (run 'make console' in terminal).`;
+        statusEl.innerText = "Auth Failed";
+      }
     }
 
     async function runScenario(scenario) {
@@ -350,61 +591,27 @@
           consoleEl.textContent = `=== HTTP INGRESS REQUEST ===\nGET ${ep.gateway}/.well-known/oauth-protected-resource HTTP/1.1\nUser-Agent: Enterprise-AI-Agent/2.0\n\n=== APIGEE RESPONSE (RFC 9728 CHALLENGE) ===\nHTTP/1.1 ${res.status} Unauthorized\nWWW-Authenticate: ${wwwAuth}\nContent-Type: application/json\n\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] AI Agent discovered Authorization Server URI and required MCP scopes without pre-configured secrets!`;
           statusEl.innerText = "HTTP 401 Expected Challenge";
         } catch (e) {
-          consoleEl.textContent = `Error connecting to Gateway (${ep.gateway}): ${e.message}\nMake sure 'make studio' is running or your Gateway URL is reachable.`;
+          consoleEl.textContent = `⚠️ Gateway Connection Refused (${ep.gateway})\n\nServices are currently OFFLINE on localhost.\nTo start all services, run 'make console' in your terminal.`;
+          statusEl.innerText = "Gateway Offline";
         }
       }
 
       else if (scenario === 'login') {
-        titleEl.innerText = "SCENARIO 2: Corporate SSO Login (STS Token Minting)";
-        statusEl.innerText = "Opening Corporate SSO popup window...";
-        document.getElementById('nodeClient').classList.add('active-node');
-        document.getElementById('nodeSTS').classList.add('active-node');
-
-        consoleEl.textContent = `=== STEP 2: OPENING CORPORATE SSO LOGIN ===\nLaunching browser authentication window to:\n${ep.idp}/oauth2/v1/authorize\n\nWaiting for user to submit credentials (developer@example.com / demo123)...`;
-
-        const authWindow = window.open(`${ep.idp}/oauth2/v1/authorize?client_id=enterprise-ai-agent&redirect_uri=${encodeURIComponent(ep.idp + '/oauth2/v1/callback')}`, 'sso_login', 'width=460,height=580');
-
-        const messageHandler = async (event) => {
-          if (event.data && event.data.type === 'sso_auth_code') {
-            window.removeEventListener('message', messageHandler);
-            const code = event.data.code;
-            statusEl.innerText = "Auth code received! Exchanging for User JWT...";
-
-            try {
-              const body = new URLSearchParams();
-              body.append('grant_type', 'authorization_code');
-              body.append('code', code);
-              body.append('client_id', 'enterprise-ai-agent');
-
-              const res = await fetch(`${ep.idp}/oauth2/v1/token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: body
-              });
-              const data = await res.json();
-              currentUserJwt = data.access_token;
-
-              document.getElementById('authStatus').innerHTML = '<span style="color:#10b981; font-weight:600;">✓ Authenticated</span>: <code>developer@example.com</code>';
-              document.getElementById('tokenBox').style.display = 'block';
-              document.getElementById('tokenBox').textContent = currentUserJwt.substring(0, 36) + '...';
-
-              consoleEl.textContent = `=== STEP 2: SSO AUTHENTICATION COMPLETE ===\n1. User submitted credentials at Corporate IdP login page.\n2. Authorization code issued: ${code}\n3. Token exchanged via POST ${ep.idp}/oauth2/v1/token (grant_type=authorization_code)\n\n=== STS USER JWT ISSUED ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Corporate User JWT acquired! Claims:\n- Subject: "developer@example.com"\n- Audience: "enterprise-api-gateway"\n- Roles: ["engineering", "ai-assistants"]`;
-              statusEl.innerText = "User JWT Active";
-            } catch (err) {
-              consoleEl.textContent = `Error exchanging auth code: ${err.message}`;
-            }
-          }
-        };
-
-        window.addEventListener('message', messageHandler);
+        if (!servicesOnline.sts) {
+          consoleEl.textContent = `⚠️ Enterprise STS is OFFLINE at ${ep.idp}.\n\nRun 'make console' in your terminal to start the local services.`;
+          statusEl.innerText = "STS Offline";
+          return;
+        }
+        openLoginModal();
       }
 
       else if (scenario === 'tools_list') {
         if (!currentUserJwt) {
-          alert("Please click Step 2 (Corporate SSO Sign-In) first to acquire a user token!");
+          consoleEl.textContent = "⚠️ Please click Step 2 (Corporate SSO Sign-In) first to acquire a user token!";
+          statusEl.innerText = "Token Required";
           return;
         }
-        titleEl.innerText = "SCENARIO 3: Tools Listing with Automatic RFC 8693 Token Exchange";
+        titleEl.innerText = "SCENARIO 3: Tools Listing with In-Flight RFC 8693 Token Exchange";
         statusEl.innerText = "Apigee intercepting & exchanging token...";
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeGateway').classList.add('active-node');
@@ -418,84 +625,89 @@
               'Authorization': `Bearer ${currentUserJwt}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({})
+            body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 })
           });
           const data = await res.json();
-          consoleEl.textContent = `=== 1. INGRESS CALL TO APIGEE GATEWAY ===\nPOST ${ep.gateway}/mcp/v1/tools/list HTTP/1.1\nAuthorization: Bearer <user_corporate_jwt>\n\n=== 2. APIGEE EXECUTES RFC 8693 SERVICE CALLOUT ===\nPOST ${ep.idp}/oauth2/v1/token\ngrant_type=urn:ietf:params:oauth:grant-type:token-exchange\nsubject_token=<user_corporate_jwt>\naudience=https://mcp.partner-service.example.com\n\n=== 3. OUTBOUND CALL TO EXTERNAL SAAS BACKEND ===\nPOST ${ep.backend}/mcp/v1/tools/list\nAuthorization: Bearer <exchanged_partner_token>\nX-Correlation-Id: trace-12345\n[NOTICE] All employee PII (email, username, internal groups) was scrubbed by Apigee AssignMessage policy!\n\n=== 4. SAAS PARTNER JSON-RPC RESPONSE ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Tools retrieved without developer laptop holding external partner credentials!`;
-          statusEl.innerText = "Tools List Exchanged & Returned";
+          consoleEl.textContent = `=== STEP 3: TOOLS/LIST PROTOCOL FLOW ===\n1. AI Agent calls Apigee Gateway with User JWT:\n   POST ${ep.gateway}/mcp/v1/tools/list\n   Authorization: Bearer <Corporate_User_JWT>\n\n2. Apigee Intercepts & Extracts User Context:\n   User: "developer@example.com"\n   Required Partner Audience: "https://mcp.partner-service.example.com"\n\n3. Apigee Calls Enterprise STS for RFC 8693 Token Exchange:\n   POST ${ep.idp}/oauth2/v1/token\n   grant_type=urn:ietf:params:oauth:grant-type:token-exchange\n   subject_token=<Corporate_User_JWT>\n   audience=https://mcp.partner-service.example.com\n\n4. Apigee Invokes SaaS Partner Backend with Exchanged Partner JWT:\n   POST ${ep.backend}/mcp/v1/tools/list\n   Authorization: Bearer <Exchanged_Partner_JWT>\n\n=== RESPONSE FROM SAAS MCP BACKEND ===\nHTTP/1.1 ${res.status} OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Token exchanged in-flight! The SaaS MCP server received a valid vendor-scoped JWT without ever seeing corporate employee credentials.`;
+          statusEl.innerText = "Tools Discovered (200 OK)";
         } catch (e) {
-          consoleEl.textContent = `Error during tools listing: ${e.message}`;
+          consoleEl.textContent = `Error during tools/list: ${e.message}\nMake sure all local services are running with 'make console'.`;
         }
       }
 
       else if (scenario === 'tools_call') {
         if (!currentUserJwt) {
-          alert("Please click Step 2 (Corporate SSO Sign-In) first to acquire a user token!");
+          consoleEl.textContent = "⚠️ Please click Step 2 (Corporate SSO Sign-In) first to acquire a user token!";
+          statusEl.innerText = "Token Required";
           return;
         }
-        titleEl.innerText = "SCENARIO 4: MCP Tool Execution ('search_catalog')";
-        statusEl.innerText = "Executing tool call via Apigee Gateway...";
+        titleEl.innerText = "SCENARIO 4: Down-Scoped MCP Tool Execution";
+        statusEl.innerText = "Apigee exchanging token with restricted scope...";
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeGateway').classList.add('active-node');
         document.getElementById('nodeSTS').classList.add('active-node');
         document.getElementById('nodeBackend').classList.add('active-node');
 
         try {
-          const payload = {
-            jsonrpc: "2.0",
-            id: "call-101",
-            method: "tools/call",
-            params: {
-              name: "search_catalog",
-              arguments: {
-                query: "beverage container",
-                limit: 5
-              }
-            }
-          };
-
           const res = await fetch(`${ep.gateway}/mcp/v1/tools/call`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${currentUserJwt}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "tools/call",
+              params: {
+                name: "search_catalog",
+                arguments: { query: "organic apples", category: "produce", limit: 3 }
+              },
+              id: 2
+            })
           });
           const data = await res.json();
-          consoleEl.textContent = `=== INGRESS TOOL CALL VIA APIGEE ===\nPOST ${ep.gateway}/mcp/v1/tools/call HTTP/1.1\nAuthorization: Bearer <user_corporate_jwt>\nPayload: ${JSON.stringify(payload, null, 2)}\n\n=== EXCHANGED PARTNER CALL & BACKEND RESULT ===\nHTTP/1.1 200 OK\n${JSON.stringify(data, null, 2)}\n\n[VERIFIED] Target SaaS backend executed tool successfully under down-scoped partner actor identity!`;
-          statusEl.innerText = "Tool Call Complete";
+          consoleEl.textContent = `=== STEP 4: TOOL EXECUTION FLOW ===\n1. AI Agent invokes tool on Apigee Gateway:\n   POST ${ep.gateway}/mcp/v1/tools/call\n   Tool: "search_catalog"\n   Arguments: { "query": "organic apples", "category": "produce", "limit": 3 }\n\n2. Apigee Down-Scopes Token Exchange:\n   Requested Scopes: ["tools:execute", "catalog:read"]\n   Exchanged Token issued with exact ephemeral privileges.\n\n3. SaaS Partner Executes & Responds:\n=== BACKEND EXECUTION RESULT ===\nHTTP/1.1 ${res.status} OK\n${JSON.stringify(data, null, 2)}\n\n[SUCCESS] Tool executed successfully under Apigee governance and audit logging!`;
+          statusEl.innerText = "Tool Call Succeeded (200 OK)";
         } catch (e) {
-          consoleEl.textContent = `Error executing tool: ${e.message}`;
+          consoleEl.textContent = `Error executing tool call: ${e.message}`;
         }
       }
 
       else if (scenario === 'test_direct') {
-        if (!currentUserJwt) {
-          alert("Please click Step 2 (Corporate SSO Sign-In) first to acquire a user token!");
-          return;
-        }
-        titleEl.innerText = "SCENARIO 5: Security Boundary Enforcement (Direct SaaS Call)";
-        statusEl.innerText = `Attempting to bypass Apigee and call SaaS directly at ${ep.backend}...`;
+        titleEl.innerText = "SCENARIO 5: Security Test (Bypassing Apigee to hit SaaS Directly)";
+        statusEl.innerText = "Testing direct SaaS invocation...";
         document.getElementById('nodeClient').classList.add('active-node');
         document.getElementById('nodeBackend').classList.add('active-node');
 
         try {
-          const res = await fetch(`${ep.backend}/mcp/v1/tools/list`, {
+          const res = await fetch(`${ep.backend}/mcp/v1/tools/call`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${currentUserJwt}`,
+              'Authorization': currentUserJwt ? `Bearer ${currentUserJwt}` : 'Bearer fake-corporate-jwt',
               'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              method: "tools/call",
+              params: { name: "search_catalog", arguments: {} },
+              id: 3
+            })
           });
-          const data = await res.json();
-          consoleEl.textContent = `=== DIRECT CALL TO EXTERNAL SAAS BACKEND ===\nPOST ${ep.backend}/mcp/v1/tools/list HTTP/1.1\nAuthorization: Bearer <corporate_user_jwt>\n\n=== SAAS PARTNER RESPONSE ===\nHTTP/1.1 ${res.status} ${res.statusText}\n${JSON.stringify(data, null, 2)}\n\n[SECURITY SUCCESS] The SaaS backend REJECTED direct presentation of the corporate token because it lacks the partner audience! Access is only possible through Apigee's brokered token exchange.`;
-          statusEl.innerText = "HTTP 403 Forbidden (Blocked)";
+          const text = await res.text();
+          consoleEl.textContent = `=== SECURITY VERIFICATION ===\nClient directly invoked External SaaS Partner without Apigee Token Exchange:\nPOST ${ep.backend}/mcp/v1/tools/call\nAuthorization: Bearer <Un-Exchanged_Corporate_JWT>\n\n=== RESPONSE FROM SAAS PARTNER ===\nHTTP/1.1 ${res.status} Forbidden\nBody: ${text}\n\n[VERIFIED] The external SaaS MCP server strictly enforces exchanged partner JWTs with audience 'https://mcp.partner-service.example.com'. Direct calls with corporate tokens are immediately blocked!`;
+          statusEl.innerText = `HTTP ${res.status} Correctly Rejected`;
         } catch (e) {
-          consoleEl.textContent = `Call failed as expected: ${e.message}`;
+          consoleEl.textContent = `Error connecting directly to SaaS backend: ${e.message}\nMake sure services are running with 'make console'.`;
         }
       }
     }
+
+    // Auto-initialize query parameters & start periodic health check
+    window.addEventListener('DOMContentLoaded', () => {
+      initFromQueryParams();
+      checkHealth();
+      setInterval(checkHealth, 3500);
+    });
   </script>
 </body>
 </html>

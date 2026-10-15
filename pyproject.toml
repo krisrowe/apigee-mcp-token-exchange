@@ -23,5 +23,11 @@ dev = [
     "pytest-asyncio>=0.23.0",
 ]
 
+[tool.setuptools]
+py-modules = ["client_bridge", "run_console"]
+
 [tool.setuptools.packages.find]
 include = ["mock_idp*", "mcp_server*", "mock_gateway*"]
+
+[project.scripts]
+mcp-gateway-client = "client_bridge:main"

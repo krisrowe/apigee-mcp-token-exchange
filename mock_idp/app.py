@@ -125,6 +125,8 @@ def callback_page(code: str, state: str = ""):
     if (window.opener) {{
       window.opener.postMessage({{ type: 'sso_auth_code', code: '{code}' }}, '*');
       window.close();
+    }} else if (window.parent && window.parent !== window) {{
+      window.parent.postMessage({{ type: 'sso_auth_code', code: '{code}' }}, '*');
     }} else {{
       document.body.innerHTML = '<h3>Authentication successful! You can close this window.</h3>';
     }}

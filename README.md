@@ -191,6 +191,8 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 
 ## Interactive Protocol Console (Live Network Demo)
 
+![Interactive Protocol Console Preview](docs/console-preview.png)
+
 To experience the architecture visually and inspect real HTTP/OAuth traffic in real time:
 
 ```bash

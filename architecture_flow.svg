@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0f172a; stroke: #334155; stroke-width: 1px; }
+      .box { rx: 8px; stroke-width: 1.5px; }
+      .box-client { fill: #1e293b; stroke: #38bdf8; }
+      .box-apigee { fill: #062f42; stroke: #0284c7; }
+      .box-sts { fill: #1e1b4b; stroke: #818cf8; }
+      .box-saas { fill: #2e1065; stroke: #c084fc; }
+      .title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; font-weight: 700; fill: #f8fafc; }
+      .desc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11.5px; fill: #94a3b8; }
+      .tag { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; font-weight: 700; text-anchor: middle; }
+      .arrow { stroke: #94a3b8; stroke-width: 2px; fill: none; stroke-linecap: round; }
+      .arrow-dashed { stroke: #38bdf8; stroke-width: 2px; stroke-dasharray: 5,5; fill: none; }
+      .arrow-ret { stroke: #34d399; stroke-width: 2px; stroke-dasharray: 5,5; fill: none; }
+      .step-bubble { fill: #0f172a; stroke: #38bdf8; stroke-width: 1px; }
+      .step-num { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 700; fill: #38bdf8; text-anchor: middle; dominant-baseline: central; }
+      .step-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 11.5px; font-weight: 600; fill: #f8fafc; }
+      .sub-step { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10.5px; fill: #94a3b8; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#94a3b8" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#38bdf8" />
+    </marker>
+    <marker id="arrowhead-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#34d399" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="960" height="480" class="bg" rx="12" />
+
+  <!-- 1. Client / Agent -->
+  <g transform="translate(40, 50)">
+    <rect width="200" height="370" class="box box-client" />
+    <text x="20" y="32" class="title">Developer AI Agent</text>
+    <text x="20" y="50" class="desc">IDE / Claude Code / CLI</text>
+    <rect x="20" y="68" width="160" height="22" rx="4" fill="#0c4a6e" />
+    <text x="100" y="83" class="tag" fill="#38bdf8">CLIENT CONTEXT</text>
+
+    <!-- Inner features -->
+    <rect x="20" y="105" width="160" height="65" rx="6" fill="#0f172a" stroke="#334155" />
+    <text x="28" y="127" class="step-text">1. Discover Resource</text>
+    <text x="28" y="145" class="sub-step">RFC 9728 GET 401</text>
+    <text x="28" y="159" class="sub-step">Discovers STS auth URIs</text>
+
+    <rect x="20" y="185" width="160" height="65" rx="6" fill="#0f172a" stroke="#334155" />
+    <text x="28" y="207" class="step-text">2. SSO Sign-In</text>
+    <text x="28" y="225" class="sub-step">In-page OAuth PKCE</text>
+    <text x="28" y="239" class="sub-step">Mints User Corporate JWT</text>
+
+    <rect x="20" y="265" width="160" height="65" rx="6" fill="#0f172a" stroke="#334155" />
+    <text x="28" y="287" class="step-text">3. Execute Tool</text>
+    <text x="28" y="305" class="sub-step">POST /mcp/v1/tools/call</text>
+    <text x="28" y="319" class="sub-step">Passes User Corporate JWT</text>
+  </g>
+
+  <!-- 2. Apigee AI Gateway -->
+  <g transform="translate(300, 50)">
+    <rect width="300" height="370" class="box box-apigee" />
+    <text x="20" y="32" class="title">Apigee Gateway Ingress</text>
+    <text x="20" y="50" class="desc">API Management & Governance Proxy</text>
+    <rect x="20" y="68" width="260" height="22" rx="4" fill="#0369a1" />
+    <text x="150" y="83" class="tag" fill="#e0f2fe">BROKERED TOKEN EXCHANGE POLICY</text>
+
+    <!-- Policy Steps -->
+    <rect x="20" y="105" width="260" height="52" rx="6" fill="#0f172a" stroke="#0284c7" />
+    <circle cx="36" cy="131" r="10" class="step-bubble" />
+    <text x="36" y="131" class="step-num">A</text>
+    <text x="56" y="127" class="step-text">&lt;VerifyJWT&gt; Ingress Policy</text>
+    <text x="56" y="143" class="sub-step">Validates incoming Corporate User JWT</text>
+
+    <rect x="20" y="167" width="260" height="52" rx="6" fill="#0f172a" stroke="#0284c7" />
+    <circle cx="36" cy="193" r="10" class="step-bubble" />
+    <text x="36" y="193" class="step-num">B</text>
+    <text x="56" y="189" class="step-text">&lt;ServiceCallout&gt; to Enterprise STS</text>
+    <text x="56" y="205" class="sub-step">Executes RFC 8693 Token Exchange</text>
+
+    <rect x="20" y="229" width="260" height="52" rx="6" fill="#0f172a" stroke="#0284c7" />
+    <circle cx="36" cy="255" r="10" class="step-bubble" />
+    <text x="36" y="255" class="step-num">C</text>
+    <text x="56" y="251" class="step-text">&lt;ExtractVariables&gt;</text>
+    <text x="56" y="267" class="sub-step">Extracts exchanged Partner Token</text>
+
+    <rect x="20" y="291" width="260" height="52" rx="6" fill="#0f172a" stroke="#0284c7" />
+    <circle cx="36" cy="317" r="10" class="step-bubble" />
+    <text x="36" y="317" class="step-num">D</text>
+    <text x="56" y="313" class="step-text">&lt;AssignMessage&gt; Header Rewrite</text>
+    <text x="56" y="329" class="sub-step">Injects Partner Bearer &amp; scrubs user PII</text>
+  </g>
+
+  <!-- 3. External SaaS MCP Server -->
+  <g transform="translate(680, 50)">
+    <rect width="240" height="175" class="box box-saas" />
+    <text x="20" y="32" class="title">External SaaS MCP Server</text>
+    <text x="20" y="50" class="desc">Partner Model Context Protocol</text>
+    <rect x="20" y="68" width="200" height="22" rx="4" fill="#581c87" />
+    <text x="120" y="83" class="tag" fill="#f3e8ff">PARTNER TOKEN VALIDATION</text>
+
+    <rect x="20" y="105" width="200" height="50" rx="6" fill="#0f172a" stroke="#7c3aed" />
+    <text x="30" y="126" class="step-text">Strict Audience Enforcement</text>
+    <text x="30" y="142" class="sub-step">aud: https://mcp.partner-service...</text>
+  </g>
+
+  <!-- 4. Enterprise STS -->
+  <g transform="translate(680, 245)">
+    <rect width="240" height="175" class="box box-sts" />
+    <text x="20" y="32" class="title">Enterprise STS / IdP</text>
+    <text x="20" y="50" class="desc">Okta / Entra / Ping Identity</text>
+    <rect x="20" y="68" width="200" height="22" rx="4" fill="#3730a3" />
+    <text x="120" y="83" class="tag" fill="#e0e7ff">RFC 8693 TOKEN SERVICE</text>
+
+    <rect x="20" y="105" width="200" height="50" rx="6" fill="#0f172a" stroke="#6366f1" />
+    <text x="30" y="126" class="step-text">Mints Exchanged Partner Token</text>
+    <text x="30" y="142" class="sub-step">Actor claim: act: { sub: "apigee" }</text>
+  </g>
+
+  <!-- Flow Connectors -->
+  <!-- Client to Apigee -->
+  <path d="M 240 310 L 300 310" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="270" y="302" class="tag" fill="#94a3b8">TOOL CALL</text>
+
+  <!-- Apigee to STS -->
+  <path d="M 600 230 Q 640 230 640 310 L 680 310" class="arrow-dashed" marker-end="url(#arrowhead-blue)" />
+  <text x="640" y="265" class="tag" fill="#38bdf8">RFC 8693</text>
+
+  <!-- STS return to Apigee -->
+  <path d="M 680 345 L 600 345" class="arrow-ret" marker-end="url(#arrowhead-green)" />
+  <text x="640" y="360" class="tag" fill="#34d399">PARTNER JWT</text>
+
+  <!-- Apigee to External SaaS MCP -->
+  <path d="M 600 135 L 680 135" class="arrow" marker-end="url(#arrowhead)" />
+  <text x="640" y="127" class="tag" fill="#94a3b8">FORWARD</text>
+
+</svg>

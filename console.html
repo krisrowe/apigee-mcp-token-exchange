@@ -287,6 +287,20 @@
     </div>
   </div>
 
+  <!-- Architectural Flow & Trust Boundaries -->
+  <div class="config-bar" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-weight: 700; font-size: 13.5px; color: #38bdf8;">📐 End-to-End Architectural Flow & Trust Boundaries</span>
+        <span style="font-size: 11.5px; color: var(--muted); margin-left: 8px;">(RFC 9728 Discovery &rarr; OAuth PKCE SSO &rarr; In-Flight RFC 8693 Brokered Token Exchange)</span>
+      </div>
+      <button class="preset-btn" onclick="toggleArch()" id="btnToggleArch">▲ Hide Diagram</button>
+    </div>
+    <div id="archDiagram" style="margin-top: 14px; text-align: center;">
+      <img src="architecture_flow.svg" alt="Architecture Flow" style="width: 100%; max-width: 960px; height: auto; border-radius: 8px; border: 1px solid var(--border);" />
+    </div>
+  </div>
+
   <div class="container">
     <!-- Left Scenarios Control -->
     <div class="card">
@@ -396,6 +410,18 @@
       };
     }
 
+    function toggleArch() {
+      const el = document.getElementById('archDiagram');
+      const btn = document.getElementById('btnToggleArch');
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+        btn.innerText = '▲ Hide Diagram';
+      } else {
+        el.style.display = 'none';
+        btn.innerText = '▼ Show Diagram';
+      }
+    }
+
     function initFromQueryParams() {
       const params = new URLSearchParams(window.location.search);
       if (params.has('gateway')) document.getElementById('inputGateway').value = params.get('gateway');
@@ -448,12 +474,17 @@
         servicesOnline.gateway = false;
       }
 
-      // Check STS
+      // Check STS (OIDC Discovery or JWKS)
       try {
-        const res = await fetch(`${ep.idp}/.well-known/jwks.json`, { method: 'GET', signal: AbortSignal.timeout(1500) });
+        const res = await fetch(`${ep.idp}/.well-known/openid-configuration`, { method: 'GET', signal: AbortSignal.timeout(1500) });
         servicesOnline.sts = res.ok;
       } catch (e) {
-        servicesOnline.sts = false;
+        try {
+          const res2 = await fetch(`${ep.idp}/oauth2/v1/keys`, { method: 'GET', signal: AbortSignal.timeout(1500) });
+          servicesOnline.sts = res2.ok;
+        } catch (e2) {
+          servicesOnline.sts = false;
+        }
       }
 
       // Check SaaS MCP Backend

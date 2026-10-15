@@ -32,6 +32,7 @@ def openid_configuration():
     }
 
 @app.get("/oauth2/v1/keys")
+@app.get("/.well-known/jwks.json")
 def jwks():
     return {
         "keys": [

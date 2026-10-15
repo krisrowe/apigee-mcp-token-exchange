@@ -101,24 +101,39 @@ def main():
     p_gw.start()
     p_mcp.start()
 
-    # Wait for services to bind
-    for port in [8080, 8081, 8082]:
-        deadline = time.time() + 5.0
-        bound = False
-        while time.time() < deadline:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(0.2)
-                if s.connect_ex(("127.0.0.1", port)) == 0:
-                    bound = True
-                    break
-            time.sleep(0.1)
-        if not bound:
-            print(f"Warning: Port {port} did not start listening in time.")
+    # Wait for services to bind and validate HTTP responses
+    import urllib.request
+    import urllib.error
 
-    print("✓ Local Services Online:")
-    print("  • Apigee Gateway Emulator: http://127.0.0.1:8080")
-    print("  • Enterprise STS (Mock):   http://127.0.0.1:8081")
-    print("  • SaaS Partner MCP Server: http://127.0.0.1:8082")
+    endpoints = [
+        ("Apigee Gateway Emulator (:8080)", "http://127.0.0.1:8080/.well-known/oauth-protected-resource", "GET"),
+        ("Enterprise STS / IdP   (:8081)", "http://127.0.0.1:8081/.well-known/openid-configuration", "GET"),
+        ("SaaS MCP Backend       (:8082)", "http://127.0.0.1:8082/mcp/v1/tools/list", "POST"),
+    ]
+
+    print("\nValidating service HTTP endpoints...")
+    time.sleep(0.5)
+    for name, url, method in endpoints:
+        deadline = time.time() + 6.0
+        verified = False
+        while time.time() < deadline:
+            try:
+                req = urllib.request.Request(url, method=method)
+                with urllib.request.urlopen(req, timeout=1.0) as resp:
+                    print(f"  ✓ {name}: HTTP {resp.status} OK")
+                    verified = True
+                    break
+            except urllib.error.HTTPError as e:
+                if e.code in [401, 403]:
+                    print(f"  ✓ {name}: HTTP {e.code} (Active Security Challenge)")
+                    verified = True
+                    break
+                time.sleep(0.2)
+            except Exception:
+                time.sleep(0.2)
+
+        if not verified:
+            print(f"  ✗ {name}: Service did not respond within timeout.")
 
     console_path = os.path.abspath("console.html")
     console_url = f"file://{console_path}"

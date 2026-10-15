@@ -18,7 +18,7 @@ test: setup
 
 bundle:
 	@mkdir -p dist
-	@cd apiproxy && zip -r ../dist/apigee-mcp-token-exchange.zip .
+	@zip -r dist/apigee-mcp-token-exchange.zip apiproxy
 	@echo "Apigee proxy bundle created at dist/apigee-mcp-token-exchange.zip"
 
 clean:

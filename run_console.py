@@ -54,10 +54,10 @@ def main():
     print("  • Enterprise STS (Mock):   http://127.0.0.1:8081")
     print("  • SaaS Partner MCP Server: http://127.0.0.1:8082")
 
-    studio_path = os.path.abspath("studio.html")
-    studio_url = f"file://{studio_path}"
-    print(f"\n🚀 Opening Interactive Studio in browser: {studio_url}")
-    webbrowser.open(studio_url)
+    console_path = os.path.abspath("console.html")
+    console_url = f"file://{console_path}"
+    print(f"\n🚀 Opening Interactive Test Console in browser: {console_url}")
+    webbrowser.open(console_url)
     print("\nPress Ctrl+C to stop all services.")
 
     try:

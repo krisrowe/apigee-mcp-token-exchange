@@ -163,11 +163,11 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 
 ```text
 .
-├── Makefile                # setup, test, studio, bundle, clean
+├── Makefile                # setup, test, console, bundle, clean
 ├── pyproject.toml          # Test harness dependencies (FastAPI, FastMCP, Pytest)
 ├── architecture_flow.mmd   # Source Mermaid sequence diagram
-├── studio.html             # Interactive visual X-ray dashboard for live testing
-├── run_studio.py           # One-command studio service runner
+├── console.html            # Interactive visual protocol console for live network tracing
+├── run_console.py          # One-command local console & mock service runner
 ├── client_bridge.py        # Stdio-to-HTTP MCP bridge for CLI agents & IDEs
 │
 ├── apiproxy/               # Production Apigee API Proxy Bundle
@@ -189,15 +189,15 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 
 ---
 
-## Interactive Visual Studio (Live Network Demo)
+## Interactive Protocol Console (Live Network Demo)
 
 To experience the architecture visually and inspect real HTTP/OAuth traffic in real time:
 
 ```bash
-make studio
+make console
 ```
 
-This launches all three local services on loopback ports (`8080`, `8081`, `8082`) and automatically opens `studio.html` in your default browser.
+This launches all three local services on loopback ports (`8080`, `8081`, `8082`) and automatically opens `console.html` in your default browser.
 
 ### Workstation & Browser Compatibility
 * **Cross-Platform:** Works on macOS, Linux, and Windows with Python 3.11+.
@@ -205,7 +205,7 @@ This launches all three local services on loopback ports (`8080`, `8081`, `8082`
 * **Live Network Traffic:** Every click makes real HTTP calls across localhost TCP sockets. Open your browser's Developer Tools (`Network` tab) to inspect the headers, status codes, and JSON-RPC payloads live.
 
 ### Testing Flexible Environments & Custom Gateways (Query Parameters)
-The studio supports dynamic URL query parameters so you can toggle between your local simulation and real cloud environments with zero code modifications:
+The test console supports dynamic URL query parameters so you can toggle between your local simulation and real cloud environments with zero code modifications:
 
 | Query Parameter | Description | Default Value |
 | :--- | :--- | :--- |
@@ -215,13 +215,13 @@ The studio supports dynamic URL query parameters so you can toggle between your 
 
 **Example Scenarios:**
 * **Testing Live Cloud Apigee X:**  
-  Load the studio with your Apigee cloud ingress endpoint:  
-  `studio.html?gateway=https://api.yourcompany.com/ai-gateway`
+  Load the console with your Apigee cloud ingress endpoint:  
+  `console.html?gateway=https://api.yourcompany.com/ai-gateway`
 * **Testing Real Okta / Entra ID:**  
-  Point the studio to your corporate IdP:  
-  `studio.html?idp=https://dev-xxxx.okta.com`
+  Point the console to your corporate IdP:  
+  `console.html?idp=https://dev-xxxx.okta.com`
 * **One-Click Presets & Shareable Links:**  
-  Use the **Presets** buttons in the studio header (`Local Mock`, `Cloud Apigee X`) or click **📋 Copy Link** to share the exact test configuration with colleagues.
+  Use the **Presets** buttons in the console header (`Local Mock`, `Cloud Apigee X`) or click **📋 Copy Link** to share the exact test configuration with colleagues.
 
 ### Step-by-Step Interactive Journey
 
@@ -246,17 +246,56 @@ The studio supports dynamic URL query parameters so you can toggle between your 
 
 ## CLI Agent & IDE Integration (`client_bridge.py`)
 
-You can also connect real coding agents (Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
+You can connect real coding agents (Antigravity CLI, Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
 
-### Using with Antigravity CLI / Claude Code
+### 1. Antigravity CLI / Antigravity CLI (`agy`)
+
+Register the MCP server with the CLI:
 ```bash
-# Start background services
-python run_studio.py &
-
-# Run agent prompt through the Apigee Gateway
-antigravity -p "What tools are available from partner-gateway?"
+antigravity mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
+# or with agy:
+agy mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
 ```
-The bridge automatically checks for a cached corporate token, opens the browser SSO login if needed, and translates stdio JSON-RPC to Apigee Gateway HTTP calls.
+
+Ask the agent to execute a tool:
+```bash
+antigravity -p "Call search_catalog for 'organic apples'"
+```
+
+**Verified Agent Terminal Output:**
+```text
+I called `search_catalog` on the `enterprise-catalog` MCP server for `'organic apples'`.
+
+Result:
+> Found 3 catalog results matching query: 'organic apples'.
+```
+
+Behind the scenes:
+1. Antigravity / Antigravity CLI launches `client_bridge.py` over stdio.
+2. The bridge initiates the SSO login flow (opens browser if unauthenticated) and stores the Corporate User JWT.
+3. The agent sends `tools/call` for `search_catalog` to the bridge.
+4. The bridge forwards the request to **Apigee Gateway (`:8080`)** with `Authorization: Bearer <user_jwt>`.
+5. Apigee verifies the user JWT, executes the RFC 8693 Token Exchange with **Enterprise STS (`:8081`)**, and injects the down-scoped partner token.
+6. The **SaaS Backend (`:8082`)** validates the partner token, executes the tool, and returns the catalog result back to the agent!
+
+### 2. Claude Code CLI
+
+```bash
+claude mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
+```
+
+### 3. Cursor / VS Code (`settings.json` / `mcp_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "enterprise-catalog": {
+      "command": "/path/to/.venv/bin/python",
+      "args": ["/path/to/client_bridge.py"]
+    }
+  }
+}
+```
 
 ---
 

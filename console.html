@@ -371,6 +371,77 @@
     </div>
   </div>
 
+  <!-- Agent CLI & IDE Testing Guidance Card -->
+  <div class="config-bar" style="max-width: 1240px; margin: 24px auto 0; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+      <div>
+        <span style="font-weight: 700; font-size: 15px; color: #38bdf8;">🤖 Test with AI Coding Agents (CLI & IDE Integration)</span>
+        <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">
+          Connect your terminal coding agent or IDE directly to this Apigee MCP Gateway with live token exchange.
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="preset-btn" id="btnTabAgy" onclick="showAgentTab('agy')" style="background:#0284c7; border-color:#0284c7; color:#fff;">Antigravity CLI (agy)</button>
+        <button class="preset-btn" id="btnTabClaude" onclick="showAgentTab('claude')">Claude Code (claude)</button>
+        <button class="preset-btn" id="btnTabCursor" onclick="showAgentTab('cursor')">Cursor / VS Code</button>
+      </div>
+    </div>
+
+    <!-- Antigravity CLI Panel -->
+    <div id="panelAgy" class="agent-panel" style="display: block;">
+      <p style="font-size: 12.5px; color: #cbd5e1; margin: 0 0 10px;">
+        While <code>make console</code> is running in one terminal tab, open a separate terminal window and run:
+      </p>
+      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #38bdf8; margin-bottom: 10px; position: relative;">
+        <button class="preset-btn" onclick="copyCliCommand('cmdAgyAdd')" style="position: absolute; right: 10px; top: 8px; font-size: 11px;">📋 Copy</button>
+        <span id="cmdAgyAdd">agy mcp add enterprise-catalog mcp-gateway-client</span>
+      </div>
+      <p style="font-size: 12.5px; color: #cbd5e1; margin: 10px 0 6px;">
+        Then prompt the agent to use the gateway-governed MCP tool:
+      </p>
+      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #a7f3d0; position: relative;">
+        <button class="preset-btn" onclick="copyCliCommand('cmdAgyPrompt')" style="position: absolute; right: 10px; top: 8px; font-size: 11px;">📋 Copy</button>
+        <span id="cmdAgyPrompt">agy "Search the enterprise catalog for organic apples using the enterprise-catalog tool"</span>
+      </div>
+    </div>
+
+    <!-- Claude Code Panel -->
+    <div id="panelClaude" class="agent-panel" style="display: none;">
+      <p style="font-size: 12.5px; color: #cbd5e1; margin: 0 0 10px;">
+        Register the Apigee MCP Gateway with Claude Code:
+      </p>
+      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #38bdf8; margin-bottom: 10px; position: relative;">
+        <button class="preset-btn" onclick="copyCliCommand('cmdClaudeAdd')" style="position: absolute; right: 10px; top: 8px; font-size: 11px;">📋 Copy</button>
+        <span id="cmdClaudeAdd">claude mcp add enterprise-catalog mcp-gateway-client</span>
+      </div>
+      <p style="font-size: 12.5px; color: #cbd5e1; margin: 10px 0 6px;">
+        Execute an agentic prompt against the SaaS catalog tool:
+      </p>
+      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #a7f3d0; position: relative;">
+        <button class="preset-btn" onclick="copyCliCommand('cmdClaudePrompt')" style="position: absolute; right: 10px; top: 8px; font-size: 11px;">📋 Copy</button>
+        <span id="cmdClaudePrompt">claude -p "Use the enterprise-catalog tool to find organic produce"</span>
+      </div>
+    </div>
+
+    <!-- Cursor / VS Code Panel -->
+    <div id="panelCursor" class="agent-panel" style="display: none;">
+      <p style="font-size: 12.5px; color: #cbd5e1; margin: 0 0 10px;">
+        Add to your IDE configuration (e.g. <code>~/.cursor/mcp.json</code> or VS Code Claude extension settings):
+      </p>
+      <div style="background: #090d16; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #e2e8f0; position: relative;">
+        <button class="preset-btn" onclick="copyCliCommand('cmdCursorJson')" style="position: absolute; right: 10px; top: 8px; font-size: 11px;">📋 Copy</button>
+        <pre id="cmdCursorJson" style="margin: 0; padding: 0; background: transparent; border: none; font-size: 12px; color: #f8fafc;">{
+  "mcpServers": {
+    "enterprise-catalog": {
+      "command": "mcp-gateway-client",
+      "args": []
+    }
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+
   <!-- In-Page Corporate SSO Login Modal (No Popups for Clean Screen Sharing) -->
   <div id="loginModal" class="modal-overlay" style="display: none;">
     <div class="modal-card">
@@ -408,6 +479,41 @@
         idp: (document.getElementById('inputIdp').value || 'http://127.0.0.1:8081').trim().replace(/\/+$/, ''),
         backend: (document.getElementById('inputBackend').value || 'http://127.0.0.1:8082').trim().replace(/\/+$/, '')
       };
+    }
+
+    function showAgentTab(tab) {
+      document.getElementById('panelAgy').style.display = tab === 'agy' ? 'block' : 'none';
+      document.getElementById('panelClaude').style.display = tab === 'claude' ? 'block' : 'none';
+      document.getElementById('panelCursor').style.display = tab === 'cursor' ? 'block' : 'none';
+
+      const updateBtn = (id, active) => {
+        const btn = document.getElementById(id);
+        if (active) {
+          btn.style.background = '#0284c7';
+          btn.style.borderColor = '#0284c7';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = '#273549';
+          btn.style.borderColor = '#475569';
+          btn.style.color = '#e2e8f0';
+        }
+      };
+
+      updateBtn('btnTabAgy', tab === 'agy');
+      updateBtn('btnTabClaude', tab === 'claude');
+      updateBtn('btnTabCursor', tab === 'cursor');
+    }
+
+    function copyCliCommand(id) {
+      const el = document.getElementById(id);
+      const text = el.innerText || el.textContent;
+      navigator.clipboard.writeText(text.trim()).then(() => {
+        // Visual feedback
+        const btn = event.target;
+        const orig = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        setTimeout(() => { btn.innerText = orig; }, 1800);
+      });
     }
 
     function toggleArch() {

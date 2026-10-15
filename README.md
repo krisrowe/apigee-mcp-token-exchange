@@ -250,18 +250,18 @@ The test console supports dynamic URL query parameters so you can toggle between
 
 You can connect real coding agents (Antigravity CLI, Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
 
-### 1. Antigravity CLI / Antigravity CLI (`agy`)
+### 1. Antigravity CLI (`agy`)
 
-Register the MCP server with the CLI:
+Register the Apigee MCP Gateway with the CLI:
 ```bash
-antigravity mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
-# or with agy:
-agy mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
+agy mcp add enterprise-catalog mcp-gateway-client
+# Or directly referencing the local environment binary:
+agy mcp add enterprise-catalog .venv/bin/mcp-gateway-client
 ```
 
 Ask the agent to execute a tool:
 ```bash
-antigravity -p "Call search_catalog for 'organic apples'"
+agy "Search the enterprise catalog for organic apples using the enterprise-catalog tool"
 ```
 
 **Verified Agent Terminal Output:**
@@ -273,27 +273,34 @@ Result:
 ```
 
 Behind the scenes:
-1. Antigravity / Antigravity CLI launches `client_bridge.py` over stdio.
-2. The bridge initiates the SSO login flow (opens browser if unauthenticated) and stores the Corporate User JWT.
-3. The agent sends `tools/call` for `search_catalog` to the bridge.
-4. The bridge forwards the request to **Apigee Gateway (`:8080`)** with `Authorization: Bearer <user_jwt>`.
+1. The CLI agent launches `mcp-gateway-client` over stdio.
+2. The client checks for a cached corporate SSO JWT (launches in-browser sign-in if unauthenticated).
+3. The agent sends `tools/call` for `search_catalog`.
+4. The client forwards the request to **Apigee Gateway (`:8080`)** with `Authorization: Bearer <user_jwt>`.
 5. Apigee verifies the user JWT, executes the RFC 8693 Token Exchange with **Enterprise STS (`:8081`)**, and injects the down-scoped partner token.
 6. The **SaaS Backend (`:8082`)** validates the partner token, executes the tool, and returns the catalog result back to the agent!
 
 ### 2. Claude Code CLI
 
 ```bash
-claude mcp add enterprise-catalog $(pwd)/.venv/bin/python $(pwd)/client_bridge.py
+claude mcp add enterprise-catalog mcp-gateway-client
+# Or:
+claude mcp add enterprise-catalog .venv/bin/mcp-gateway-client
 ```
 
-### 3. Cursor / VS Code (`settings.json` / `mcp_config.json`)
+Execute an agentic prompt:
+```bash
+claude -p "Use the enterprise-catalog tool to search for organic produce"
+```
+
+### 3. Cursor / VS Code (`mcp.json` / `settings.json`)
 
 ```json
 {
   "mcpServers": {
     "enterprise-catalog": {
-      "command": "/path/to/.venv/bin/python",
-      "args": ["/path/to/client_bridge.py"]
+      "command": "mcp-gateway-client",
+      "args": []
     }
   }
 }

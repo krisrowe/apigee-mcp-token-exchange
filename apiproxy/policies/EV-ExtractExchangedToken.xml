@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ExtractVariables continueOnError="false" enabled="true" name="EV-ExtractExchangedToken">
+    <DisplayName>EV-ExtractExchangedToken</DisplayName>
+    <Source>tokenExchangeResponse.content</Source>
+    <VariablePrefix>tokenResponse</VariablePrefix>
+    <JSONPayload>
+        <Variable name="access_token">
+            <JSONPath>$.access_token</JSONPath>
+        </Variable>
+        <Variable name="token_type">
+            <JSONPath>$.token_type</JSONPath>
+        </Variable>
+    </JSONPayload>
+</ExtractVariables>

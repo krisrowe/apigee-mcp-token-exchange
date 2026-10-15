@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout continueOnError="false" enabled="true" name="SC-RFC8693-TokenExchange">
+    <DisplayName>SC-RFC8693-TokenExchange</DisplayName>
+    <Request clearPayload="true" variable="tokenExchangeRequest">
+        <Set>
+            <Headers>
+                <Header name="Content-Type">application/x-www-form-urlencoded</Header>
+            </Headers>
+            <FormParams>
+                <FormParam name="grant_type">urn:ietf:params:oauth:grant-type:token-exchange</FormParam>
+                <FormParam name="client_id">{private.apigee_client_id}</FormParam>
+                <FormParam name="client_secret">{private.apigee_client_secret}</FormParam>
+                <FormParam name="subject_token">{jwt.VA-VerifyUserJWT.valid_jwt}</FormParam>
+                <FormParam name="subject_token_type">urn:ietf:params:oauth:token-type:access_token</FormParam>
+                <FormParam name="audience">https://mcp.partner-service.example.com</FormParam>
+                <FormParam name="scope">tools:read tools:execute</FormParam>
+            </FormParams>
+            <Verb>POST</Verb>
+        </Set>
+    </Request>
+    <Response>tokenExchangeResponse</Response>
+    <HTTPTargetConnection>
+        <URL>https://auth.example.com/oauth2/v1/token</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

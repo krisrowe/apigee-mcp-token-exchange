@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage continueOnError="false" enabled="true" name="AM-InjectPartnerToken">
+    <DisplayName>AM-InjectPartnerToken</DisplayName>
+    <Set>
+        <Headers>
+            <Header name="Authorization">Bearer {tokenResponse.access_token}</Header>
+        </Headers>
+    </Set>
+    <Remove>
+        <Headers>
+            <Header name="x-internal-user-id"/>
+            <Header name="x-internal-employee-email"/>
+        </Headers>
+    </Remove>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="request"/>
+</AssignMessage>

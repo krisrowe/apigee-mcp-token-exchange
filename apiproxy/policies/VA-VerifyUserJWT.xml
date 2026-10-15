@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<VerifyJWT continueOnError="false" enabled="true" name="VA-VerifyUserJWT">
+    <DisplayName>VA-VerifyUserJWT</DisplayName>
+    <Algorithm>RS256</Algorithm>
+    <Source>request.header.Authorization</Source>
+    <PublicKey>
+        <JWKS uri="https://auth.example.com/oauth2/v1/keys"/>
+    </PublicKey>
+    <Issuer>https://auth.example.com</Issuer>
+    <Audience>enterprise-api-gateway</Audience>
+    <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+</VerifyJWT>

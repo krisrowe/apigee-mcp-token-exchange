@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<TargetEndpoint name="default">
+    <Description>External SaaS Partner MCP Target</Description>
+    <FaultRules/>
+    <PreFlow name="PreFlow"/>
+    <PostFlow name="PostFlow"/>
+    <Flows/>
+    <HTTPTargetConnection>
+        <Properties>
+            <Property name="connect.timeout.millis">10000</Property>
+            <Property name="io.timeout.millis">30000</Property>
+        </Properties>
+        <URL>https://mcp.partner-service.example.com</URL>
+    </HTTPTargetConnection>
+</TargetEndpoint>

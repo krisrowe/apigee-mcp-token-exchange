@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="mcp-external-gateway-v1">
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <CreatedAt>1760544000000</CreatedAt>
+    <CreatedBy>admin@example.com</CreatedBy>
+    <Description>Enterprise External MCP Server Gateway with RFC 8693 Token Exchange and RFC 9728 Discovery</Description>
+    <DisplayName>mcp-external-gateway-v1</DisplayName>
+    <LastModifiedAt>1760544000000</LastModifiedAt>
+    <LastModifiedBy>admin@example.com</LastModifiedBy>
+    <Policies>
+        <Policy>VA-VerifyUserJWT</Policy>
+        <Policy>SC-RFC8693-TokenExchange</Policy>
+        <Policy>EV-ExtractExchangedToken</Policy>
+        <Policy>AM-InjectPartnerToken</Policy>
+        <Policy>AM-RFC9728-DiscoveryResponse</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <TargetEndpoints>
+        <TargetEndpoint>default</TargetEndpoint>
+    </TargetEndpoints>
+</APIProxy>

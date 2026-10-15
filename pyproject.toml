@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apigee-mcp-token-exchange"
+version = "0.1.0"
+description = "Enterprise Apigee MCP Gateway with RFC 8693 Token Exchange & RFC 9728 Discovery"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "httpx>=0.27.0",
+    "pydantic>=2.6.0",
+    "python-jose[cryptography]>=3.3.0",
+    "mcp>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["mock_idp*", "mcp_server*", "mock_gateway*"]

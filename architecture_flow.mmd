@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor Developer as Developer IDE / AI Agent
+    participant Apigee as Apigee Gateway
+    participant STS as Enterprise STS (RFC 8693)
+    participant Partner as External SaaS MCP Server
+
+    Note over Developer,Apigee: Step 1: RFC 9728 Discovery (Unauthenticated)
+    Developer->>Apigee: GET /.well-known/oauth-protected-resource
+    Apigee-->>Developer: HTTP 401 Unauthorized (WWW-Authenticate: authorization_uri, token_uri)
+
+    Note over Developer,STS: Step 2: Corporate Authentication
+    Developer->>STS: POST /oauth2/v1/token (grant_type=authorization_code / client_credentials)
+    STS-->>Developer: Returns User Corporate JWT (aud: enterprise-api-gateway)
+
+    Note over Developer,Partner: Step 3: Tool Execution with Automatic Token Exchange
+    Developer->>Apigee: POST /mcp/v1/tools/call (Authorization: Bearer <user_jwt>)
+    activate Apigee
+    Apigee->>Apigee: <VerifyJWT> validates RS256 signature against STS JWKS
+    Apigee->>STS: <ServiceCallout> POST /oauth2/v1/token (grant_type=token-exchange, subject_token=<user_jwt>)
+    STS-->>Apigee: Returns Exchanged Partner Token (aud: partner-service)
+    Apigee->>Apigee: <AssignMessage> injects Bearer <partner_token> & scrubs user headers
+    Apigee->>Partner: POST /mcp/v1/tools/call (Authorization: Bearer <partner_token>)
+    activate Partner
+    Partner->>Partner: Validates partner audience & executes tool
+    Partner-->>Apigee: Returns JSON-RPC Tool Result
+    deactivate Partner
+    Apigee-->>Developer: Returns JSON-RPC Result to AI Agent
+    deactivate Apigee

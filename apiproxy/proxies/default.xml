@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <Description>Enterprise MCP Gateway Ingress</Description>
+    <FaultRules/>
+    <PreFlow name="PreFlow"/>
+    <PostFlow name="PostFlow"/>
+    <Flows>
+        <Flow name="RFC-9728-Discovery">
+            <Description>Returns 401 Unauthorized with OAuth Protected Resource metadata</Description>
+            <Request>
+                <Step>
+                    <Name>AM-RFC9728-DiscoveryResponse</Name>
+                </Step>
+            </Request>
+            <Response/>
+            <Condition>(proxy.pathsuffix MatchesPath "/.well-known/oauth-protected-resource") and (request.verb = "GET")</Condition>
+        </Flow>
+        <Flow name="MCP-Tools-Execution">
+            <Description>Verifies user JWT, performs RFC 8693 token exchange, and proxies to SaaS partner</Description>
+            <Request>
+                <Step>
+                    <Name>VA-VerifyUserJWT</Name>
+                </Step>
+                <Step>
+                    <Name>SC-RFC8693-TokenExchange</Name>
+                </Step>
+                <Step>
+                    <Name>EV-ExtractExchangedToken</Name>
+                </Step>
+                <Step>
+                    <Name>AM-InjectPartnerToken</Name>
+                </Step>
+            </Request>
+            <Response/>
+            <Condition>(proxy.pathsuffix JavaRegex "/mcp/v1/.*") and (request.verb = "POST")</Condition>
+        </Flow>
+    </Flows>
+    <HTTPProxyConnection>
+        <BasePath>/ai-gateway</BasePath>
+        <VirtualHost>default</VirtualHost>
+    </HTTPProxyConnection>
+    <RouteRule name="default">
+        <TargetEndpoint>default</TargetEndpoint>
+        <Condition>(proxy.pathsuffix JavaRegex "/mcp/v1/.*")</Condition>
+    </RouteRule>
+</ProxyEndpoint>

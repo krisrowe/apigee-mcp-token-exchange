@@ -230,7 +230,7 @@ async def client_setup_page(request: Request):
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Backend MCP Server: Client & Gateway Setup ({base_url})</title>
+  <title>Mock Backend MCP Server for RFC 8693 Token Exchange ({base_url})</title>
   <style>
     :root {{
       --bg: #0f172a;
@@ -362,7 +362,7 @@ async def client_setup_page(request: Request):
   <div class="wrap">
     <div class="header">
       <div>
-        <h1>Backend MCP Server: Client &amp; Gateway Setup</h1>
+        <h1>Mock Backend MCP Server for RFC 8693 Token Exchange</h1>
         <p class="sub">
           Live Target Endpoint: <code>{base_url}</code> &middot;
           Part of the <a href="https://github.com/krisrowe/apigee-mcp-token-exchange" target="_blank">Enterprise Apigee MCP Gateway Reference Architecture</a>
@@ -422,7 +422,7 @@ async def client_setup_page(request: Request):
 
       <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
         <label style="font-size:12px; color:var(--muted); font-weight:600;">Signing Secret for Test Token Minting:</label>
-        <input id="secretInput" type="text" value="{displayed_secret}" placeholder="Enter MCP_JWT_SECRET to mint test tokens..." style="flex:1;" />
+        <input id="secretInput" type="text" value="{displayed_secret}" oninput="updateCurlToken()" placeholder="Enter MCP_JWT_SECRET to mint test tokens..." style="flex:1;" />
         <input id="queryInput" type="text" value="organic apples" style="width:180px;" title="Search query for tools/call" />
         <button class="btn btn-sec" onclick="runSingleToolCall()">Invoke <code>search_catalog</code></button>
       </div>
@@ -448,7 +448,7 @@ async def client_setup_page(request: Request):
       <p class="sub"><strong>CLI Verification (from cloned repository):</strong></p>
       <pre>git clone https://github.com/krisrowe/apigee-mcp-token-exchange.git
 cd apigee-mcp-token-exchange
-./verify --live {base_url} --signing-key {SECRET_KEY if is_unsafe else '<YOUR_MCP_JWT_SECRET>'}</pre>
+./verify {base_url} --signing-key {SECRET_KEY if is_unsafe else '<YOUR_MCP_JWT_SECRET>'}</pre>
 
       <p class="sub"><strong>Direct <code>curl</code> Verification:</strong></p>
       <pre># 1. Negative Test: Missing Authorization Header (Expected: HTTP 401)
@@ -458,7 +458,7 @@ curl -i -X POST {base_url}/mcp/v1/tools/list \\
 
 # 2. Positive Test: Execute search_catalog with Exchanged Partner Token (Expected: HTTP 200)
 curl -i -X POST {base_url}/mcp/v1/tools/call \\
-  -H "Authorization: Bearer {sample_jwt}" \\
+  -H "Authorization: Bearer <span id="curlJwtToken">{sample_jwt}</span>" \\
   -H "Content-Type: application/json" \\
   -d '{{
     "jsonrpc": "2.0",
@@ -498,6 +498,27 @@ curl -i -X POST {base_url}/mcp/v1/tools/call \\
       );
       const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
       return `${{signingInput}}.${{b64url(new Uint8Array(sigBuf))}}`;
+    }}
+
+    async function updateCurlToken() {{
+      const secret = document.getElementById('secretInput').value.trim();
+      const span = document.getElementById('curlJwtToken');
+      if (!span) return;
+      if (!secret) {{
+        span.textContent = '<EXCHANGED_PARTNER_JWT>';
+        return;
+      }}
+      const now = Math.floor(Date.now() / 1000);
+      span.textContent = await signJwtHS256({{
+        iss: 'https://identity.example.com/oauth2/v1',
+        sub: 'actor:user_developer@example.com',
+        aud: BASE_URL,
+        act: {{ sub: 'enterprise-apigee-gateway' }},
+        scope: 'tools:read tools:execute',
+        iat: now,
+        exp: now + 3600,
+        token_use: 'exchanged_partner_token'
+      }}, secret);
     }}
 
     async function runAllTests() {{

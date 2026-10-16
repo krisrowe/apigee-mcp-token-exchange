@@ -10,8 +10,8 @@ This architecture leverages two open standards:
 
 | Role / Goal | Where to Start |
 | :--- | :--- |
-| **Evaluate Locally (60 Seconds)** | Jump to **[Quickstart](#quickstart-run--test-locally-in-60-seconds)** (`./verify` for unit tests or `make console` for the [Interactive Protocol Console](#interactive-protocol-console-live-network-demo)). |
-| **Integrate Apigee with a Backend MCP URL** | Read **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the token contract, HTTP status matrix (`200`/`401`/`403`/`404`), and `./verify --live` verification. |
+| **Evaluate Locally (60 Seconds)** | Jump to **[Quickstart](#quickstart-testing-live-verification--client-setup-portal)** (`make test` / `pytest` for unit tests or `make console` for the [Interactive Protocol Console](#interactive-protocol-console-live-network-demo)). |
+| **Integrate Apigee with a Backend MCP URL** | Read **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the token contract, HTTP status matrix (`200`/`401`/`403`/`404`), and `./verify` live verification CLI. |
 | **Deploy the Backend to Cloud Run (Optional)** | Read **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for one-command `gcloud run deploy` setup. |
 | **Connect an IDE / CLI Coding Agent** | Jump to **[CLI Agent & IDE Integration](#cli-agent--ide-integration)** to connect Antigravity CLI, Claude Code, Cursor, or VS Code. |
 
@@ -169,7 +169,7 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 ## Backend Integration & Cloud Deployment Guides
 
 ### 1. Integrating with the Backend MCP Server
-Once the reference Backend MCP Server is reachable at an HTTPS URL, Apigee (or any RFC 8693 Token Exchange broker) connects to its `/mcp/v1/tools/list` and `/mcp/v1/tools/call` endpoints using down-scoped partner tokens (`aud: https://mcp.partner-service.example.com`, `token_use: exchanged_partner_token`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the complete token verification contract, HTTP status code matrix (`200`, `401`, `403`, `404`), Apigee `TargetEndpoint` wiring, and `./verify --live` verification commands.
+Once the reference Backend MCP Server is reachable at an HTTPS URL, Apigee (or any RFC 8693 Token Exchange broker) connects to its `/mcp/v1/tools/list` and `/mcp/v1/tools/call` endpoints using down-scoped partner tokens (`aud: <BACKEND_MCP_URL>`, `token_use: exchanged_partner_token`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the complete token verification contract, HTTP status code matrix (`200`, `401`, `403`, `404`), Apigee `TargetEndpoint` wiring, and `./verify` live verification CLI commands.
 
 ### 2. Optional: Publishing the Backend to Cloud Run
 While the backend integration contract is completely cloud-agnostic, you can host the backend MCP server as a public serverless container on Cloud Run in a single command. See **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for step-by-step instructions using standard `gcloud run deploy` commands, including how to handle enterprise `iam.allowedPolicyMemberDomains` organization policies.
@@ -337,27 +337,39 @@ claude -p "Use the enterprise-catalog tool to search for organic produce"
 
 ---
 
-## Quickstart (Run & Test Locally in 60 Seconds)
+## Quickstart: Testing, Live Verification & Client Setup Portal
 
 ### Prerequisites
 - Python 3.11+
-- `make`
+- `make` *(optional — manual virtualenv commands are also shown below)*
 
-### 1. Setup Local Environment
+### 1. Setup Local Virtualenv (`make setup` or Manual `venv`)
+
+Using `make` (idempotently creates `.venv` and installs dependencies):
 ```bash
 make setup
 ```
 
-### 2. Run the Test Suite
-
-#### Fast In-Process Unit Tests (Default)
+Or transparently using standard Python `venv` + `pip`:
 ```bash
-./verify
-# Or via Make / pytest:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+### 2. Fast In-Process Unit Tests (`make test` or `pytest`)
+
+You can run the unit test suite via `make test` (which automatically ensures `.venv` is set up first) or by running `pytest` directly inside the activated virtualenv:
+```bash
+# Option 1: Via Makefile (auto-runs setup if needed)
 make test
+
+# Option 2: Directly via pytest (runs tests/unit/ by default)
+pytest
 ```
 Runs completely in-process via `httpx.ASGITransport` with zero local port bindings or network dependencies, verifying all 12 positive (`200`) and negative (`401`, `403`, `404`, `413`, `429`) protocol scenarios:
-- Health probe (`GET /` $\rightarrow$ `200`).
+- Health probe (`GET /` and `GET /health` $\rightarrow$ `200`).
 - RFC 9728 discovery challenge (`GET /.well-known/oauth-protected-resource` $\rightarrow$ `401` + `WWW-Authenticate` header).
 - Missing `Authorization` header rejection (`401`).
 - Tampered JWT signature rejection (`401`).
@@ -369,20 +381,77 @@ Runs completely in-process via `httpx.ASGITransport` with zero local port bindin
 - POC abuse and FinOps guards (`>16 KB` payload $\rightarrow$ `413`, rate limit exceeded $\rightarrow$ `429`).
 - Unknown tool call rejection (`404`).
 
-#### Opt-In Live Integration Tests (Against a Deployed Backend URL)
-To run the live positive and negative test suite over HTTPS against a deployed backend instance (see [docs/BACKEND.md](docs/BACKEND.md)), use `--live` (which caches the URL and optional `--signing-key` in `~/.cache/apigee-mcp-token-exchange/context.json`, or prompts interactively if omitted):
+### 3. Live Backend Verification CLI (`./verify`)
+
+Once the Backend MCP Server is deployed (see **[Backend MCP Server Integration Guide](docs/BACKEND.md)** and **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)**), use `./verify` to execute a human-friendly, 9-step live HTTP verification report over HTTPS.
+
+- `./verify` requires **zero external libraries** (pure Python 3 stdlib) and caches your target URL and optional `--signing-key` in `~/.cache/apigee-mcp-token-exchange/context.json`.
+- It prints your **Target Backend URL**, the clickable **`/client-setup` Portal URL**, the **`/health` URL**, and the exact HTTP method, URL, auth token, status code, and JSON response for each check:
+
 ```bash
-# First run (saves URL to XDG cache):
-./verify --live https://your-mcp-backend.example.com
+# First run (saves URL to ~/.cache/apigee-mcp-token-exchange/context.json and runs all 9 live checks):
+./verify https://your-mcp-backend.example.com
 
 # Optional: if deployed with a custom MCP_JWT_SECRET, pass --signing-key once (also cached):
-./verify --live https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
+./verify https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
 
-# Subsequent runs (automatically reuses cached URL and signing key):
-./verify --live
+# Subsequent runs (automatically reuses your cached URL and signing key):
+./verify
 ```
 
-### 3. Build Deployable Apigee Bundle
+**Sample `./verify` Terminal Output:**
+```text
+====================================================================================
+APIGEE MCP BACKEND - LIVE ENDPOINT VERIFICATION
+====================================================================================
+Target Backend URL     : https://your-mcp-backend.example.com (cached in ~/.cache/apigee-mcp-token-exchange/context.json)
+Client Setup Portal    : https://your-mcp-backend.example.com/client-setup
+Health Check Endpoint  : https://your-mcp-backend.example.com/health
+Cached Context File    : ~/.cache/apigee-mcp-token-exchange/context.json
+Active Signing Secret  : enterprise-reference-secret-key-for-jwt (repo POC default)
+------------------------------------------------------------------------------------
+
+[1/9] Health Probe (Unauthenticated Liveness)
+  Invoked  : GET https://your-mcp-backend.example.com/health
+  Auth     : None (public health probe)
+  Status   : HTTP 200 (expected 200) -> [PASS]
+  Response : {"status": "ok", "service": "catalog-mcp-backend", "runtime": "cloud-run"}
+...
+[7/9] Positive: Execute MCP Tool Call (search_catalog: 'sparkling water')
+  Invoked  : POST https://your-mcp-backend.example.com/mcp/v1/tools/call
+  Auth     : Bearer <exchanged_partner_token, aud='https://your-mcp-backend.example.com'>
+  Status   : HTTP 200 (expected 200) -> [PASS]
+  Response : {"jsonrpc": "2.0", "id": "pos-call-1", "result": {"content": [{"type": "text", "text": "Found 3 catalog results matching query: 'sparkling water'."}], "actor_context": {"gateway": "enterprise-apigee-gateway", "user_ref": "actor:user_developer@example.com"}}}
+...
+====================================================================================
+RESULT: 9/9 LIVE CHECKS PASSED AGAINST https://your-mcp-backend.example.com
+====================================================================================
+  * Open Client & Gateway Setup Page : https://your-mcp-backend.example.com/client-setup
+  * Re-run this live verification    : ./verify
+  * Switch target backend URL        : ./verify https://new-url.example.com
+====================================================================================
+```
+
+### 4. Hosted Client & Gateway Setup Portal (`/client-setup`)
+
+The Backend MCP Server includes a self-contained, browser-accessible **Client & Gateway Setup Portal** at `GET <BACKEND_MCP_URL>/client-setup` (detailed in **[docs/BACKEND.md](docs/BACKEND.md)**). Controlled via the `CLIENT_SETUP_PAGE` environment variable:
+
+| `CLIENT_SETUP_PAGE` Mode | Behavior |
+| :--- | :--- |
+| **`OFF`** *(Default)* | Disabled (`HTTP 404 Not Found`). |
+| **`SAFE`** | Serves `/client-setup` (`HTTP 200`) with the live endpoint URL, accepted `aud`, Apigee XML snippets, and the **8-Test Live Browser Suite**. The signing secret is **redacted on the server**, and the page's Signing Secret input box loads **empty and editable** — pasting the secret in your browser mints HS256 test tokens client-side (via WebCrypto) to run all 8 live tests and dynamically populates the `curl` Bearer token snippet. |
+| **`UNSAFE`** *(Sandbox / POC)* | Serves `/client-setup` (`HTTP 200`) with an explicit warning banner, displays the active `MCP_JWT_SECRET`, pre-fills the Signing Secret input box for one-click browser testing, and pre-populates ready-to-copy `curl` commands with a signed `Bearer` token. |
+
+### 5. Pytest Integration Suite (`pytest tests/integration`)
+
+If you prefer running the live integration assertions through `pytest` (for CI/CD pipelines), invoke `pytest tests/integration` (which reads `MCP_BACKEND_URL` or falls back to the URL cached by `./verify`):
+```bash
+pytest tests/integration
+# Or without activating .venv:
+.venv/bin/pytest tests/integration
+```
+
+### 6. Build Deployable Apigee Bundle
 ```bash
 make bundle
 ```

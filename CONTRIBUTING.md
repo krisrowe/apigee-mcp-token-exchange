@@ -16,23 +16,28 @@ This document covers architecture boundaries, testing conventions, and optional 
 
 ---
 
-## 2. Testing Architecture
+## 2. Testing & Live Verification Architecture
 
-Tests are organized into two tiers under [`tests/`](tests/):
+Testing and verification are organized into three complementary commands:
 
-1. **Sociable Unit Tests ([`tests/unit/test_protocol_flow.py`](tests/unit/test_protocol_flow.py)):**
-   - **Default (`./verify` or `make test`):** Runs completely in-process via `httpx.ASGITransport` with zero local TCP port bindings, zero background `uvicorn` subprocesses, and zero external network calls.
+1. **Sociable Unit Tests ([`tests/unit/test_protocol_flow.py`](tests/unit/test_protocol_flow.py)) — `make test` or `pytest`:**
+   - `make setup` idempotently prepares `.venv` (which is ignored by `.gitignore`).
+   - `make test` depends on `setup` and runs `.venv/bin/python -m pytest -v`.
+   - Running `pytest` by itself executes `tests/unit/` completely in-process via `httpx.ASGITransport` with zero local TCP port bindings, zero background `uvicorn` subprocesses, and zero external network calls.
    - Verifies all positive (`200`) and negative (`401`, `403`, `404`, `413`, `429`) protocol assertions, dynamic RFC 8707 audience matching, and `CLIENT_SETUP_PAGE` modes (`OFF`, `SAFE`, `UNSAFE`).
-2. **Opt-In Live Integration Tests ([`tests/integration/real-user/test_live_backend.py`](tests/integration/real-user/test_live_backend.py)):**
+2. **Pytest Integration Tests ([`tests/integration/real-user/test_live_backend.py`](tests/integration/real-user/test_live_backend.py)) — `pytest tests/integration`:**
    - Excluded from default `pytest` runs via `addopts = "--ignore=tests/integration"` in [`pyproject.toml`](pyproject.toml).
-   - Invoked via `./verify --live <BACKEND_URL>` (which caches the last-used URL in `~/.cache/apigee-mcp-token-exchange/context.json` so subsequent runs only require `./verify --live`).
+   - Reads `MCP_BACKEND_URL` from the environment or automatically falls back to the cached URL in `~/.cache/apigee-mcp-token-exchange/context.json`.
+3. **Interactive Live Endpoint Verifier ([`./verify`](verify)) — `./verify [BACKEND_URL] [--signing-key KEY]`:**
+   - Standalone, zero-dependency Python stdlib CLI that runs all 9 live positive and negative HTTP checks against a deployed backend URL.
+   - Prints a clear header and footer with the target URL, the clickable `/client-setup` portal URL, the `/health` endpoint, the XDG cache path, and a step-by-step trace of every HTTP request and response.
 
 ---
 
 ## 3. Pre-Commit Checks
 
-Before committing or opening a pull request, ensure both the offline unit test suite and repository hygiene checks pass with exit code `0`:
+Before committing or opening a pull request, ensure the offline unit test suite passes with exit code `0`:
 
 ```bash
-./verify
+make test
 ```

@@ -5,7 +5,7 @@
 >
 > **Using This Document Standalone:**
 > If the Backend MCP Server has **already been deployed** and you have been provided its HTTPS URL (`<BACKEND_MCP_URL>`), you can use this document directly as your integration specification to wire up your API Gateway, verify positive/negative security behavior, and execute MCP tools.
-> *(Need to deploy your own instance first? See the optional [Cloud Run Deployment Guide](CLOUD-RUN.md) or run locally via the [Main README](../README.md#quickstart-run--test-locally-in-60-seconds).)*
+> *(Need to deploy your own instance first? See the optional [Cloud Run Deployment Guide](CLOUD-RUN.md) or run locally via the [Main README](../README.md#quickstart-testing-live-verification--client-setup-portal).)*
 
 ---
 
@@ -15,12 +15,12 @@ If someone shared a live Backend MCP URL with you (for example, `https://your-mc
 
 1. **Open the Hosted Client & Gateway Setup Page (`/client-setup`):**
    If enabled on the deployment (`CLIENT_SETUP_PAGE=SAFE` or `UNSAFE`), open **`<BACKEND_MCP_URL>/client-setup`** directly in your browser. It displays the exact synchronized configuration for that live instance (URL, accepted `aud`, `token_use`, copy-paste Apigee XML snippets) and includes an **in-browser Live Verification Suite** that posts all 8 positive and negative test cases directly to the server.
-2. **Run the Automated 8-Test Positive/Negative CLI (`./verify`):**
-   Clone this repository and run `./verify --live` from the root directory (it will save the URL in your local XDG cache so future runs only require `./verify --live`):
+2. **Run the Automated Live Verification CLI (`./verify`):**
+   Clone this repository and run `./verify <BACKEND_MCP_URL>` from the root directory (it will save the URL in your local XDG cache so future runs only require `./verify`):
    ```bash
    git clone https://github.com/krisrowe/apigee-mcp-token-exchange.git
    cd apigee-mcp-token-exchange
-   ./verify --live <BACKEND_MCP_URL>
+   ./verify <BACKEND_MCP_URL>
    ```
 3. **Wire Your Apigee Proxy Target directly to `<BACKEND_MCP_URL>`:**
    Jump to **[Section 3: Configuring the Apigee Proxy Target](#3-configuring-the-apigee-proxy-target)** for the exact `HTTPTargetConnection` and header requirements.
@@ -120,56 +120,58 @@ console.html?backend=https://your-mcp-backend.example.com
 
 ### Option A: Automated Positive & Negative Verification CLI (`./verify`)
 
-The repository includes an executable [`./verify`](../verify) CLI script at the project root that runs all 10 positive (`200`) and negative (`401`, `403`, `404`) test cases against your deployed backend URL and caches the URL (and optional `--signing-key`) in `~/.cache/apigee-mcp-token-exchange/context.json` for subsequent runs:
+The repository includes a standalone executable [`./verify`](../verify) CLI script at the project root that runs all 9 positive (`200`) and negative (`401`, `403`, `404`) HTTP checks against your deployed backend URL, prints the `/client-setup` URL and full request/response details for each call, and caches the URL (and optional `--signing-key`) in `~/.cache/apigee-mcp-token-exchange/context.json` for subsequent runs:
 
 ```bash
 # First run: pass your Backend MCP URL (or omit it to be prompted interactively)
-./verify --live https://your-mcp-backend.example.com
+./verify https://your-mcp-backend.example.com
 
 # Optional: if deployed with a custom MCP_JWT_SECRET, pass --signing-key once (also cached)
-./verify --live https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
+./verify https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
 
 # Subsequent runs: automatically reuses your cached URL and signing key
-./verify --live
+./verify
 ```
 
-*(For CI/CD pipelines, you can also invoke `pytest` directly via `MCP_BACKEND_URL=https://your-mcp-backend.example.com .venv/bin/pytest tests/integration/real-user/ -v -s`.)*
+*(For `pytest` integration suites, you can also run `.venv/bin/pytest tests/integration`, which automatically reads the cached URL or `MCP_BACKEND_URL`.)*
 
-**Expected Output (`10 passed` across positive and negative HTTP assertions):**
+**Expected Output (`9/9 LIVE CHECKS PASSED` across positive and negative HTTP assertions):**
 ```text
-==> Target Backend URL : https://your-mcp-backend.example.com
-==> Saved to XDG cache : ~/.cache/apigee-mcp-token-exchange/context.json
+====================================================================================
+APIGEE MCP BACKEND - LIVE ENDPOINT VERIFICATION
+====================================================================================
+Target Backend URL     : https://your-mcp-backend.example.com (command-line argument (saved to cache))
+Client Setup Portal    : https://your-mcp-backend.example.com/client-setup
+Health Check Endpoint  : https://your-mcp-backend.example.com/health
+Cached Context File    : ~/.cache/apigee-mcp-token-exchange/context.json
+Active Signing Secret  : enterprise-reference-secret-key-for-jwt (repo POC default)
+------------------------------------------------------------------------------------
 
-tests/integration/real-user/test_live_backend.py::test_live_health_check_200
-[LIVE GET /] -> HTTP 200 | {'status': 'ok', 'service': 'catalog-mcp-backend', 'runtime': 'cloud-run'}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_negative_missing_auth_header_401
-[LIVE POST /mcp/v1/tools/list (No Auth Header)] -> HTTP 401 | {'detail': "Missing or malformed Authorization header. Expected 'Bearer <token>'"}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_negative_tampered_signature_401
-[LIVE POST /mcp/v1/tools/list (Tampered Signature)] -> HTTP 401 | {'detail': 'Invalid partner token: Signature verification failed.'}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_negative_wrong_audience_401
-[LIVE POST /mcp/v1/tools/list (Wrong Audience)] -> HTTP 401 | {'detail': "Invalid partner token: Invalid audience 'https://wrong-audience.example.com'..."}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_negative_unexchanged_corporate_token_403
-[LIVE POST /mcp/v1/tools/list (Unexchanged Corporate Token)] -> HTTP 403 | {'detail': 'Token is not an exchanged partner token. Direct corporate user tokens rejected.'}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_positive_tools_list_200
-[LIVE POST /mcp/v1/tools/list (Valid Exchanged Token)] -> HTTP 200 | {'jsonrpc': '2.0', 'id': 'list-1', 'result': {'tools': [{'name': 'search_catalog', ...}], '_meta': {'caller_actor': 'enterprise-apigee-gateway', 'delegated_subject': 'actor:user_developer@example.com'}}}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_positive_tools_call_search_catalog_200
-[LIVE POST /mcp/v1/tools/call (search_catalog)] -> HTTP 200 | {'jsonrpc': '2.0', 'id': 'live-call-1', 'result': {'content': [{'type': 'text', 'text': "Found 3 catalog results matching query: 'sparkling water'."}], 'actor_context': {'gateway': 'enterprise-apigee-gateway', 'user_ref': 'actor:user_developer@example.com'}}}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_negative_unknown_tool_404
-[LIVE POST /mcp/v1/tools/call (unknown_tool)] -> HTTP 404 | {'detail': "Tool 'unknown_tool' not found"}
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_positive_own_url_as_audience_200
-[LIVE POST /mcp/v1/tools/list (aud=https://your-mcp-backend.example.com)] -> HTTP 200
-PASSED
-tests/integration/real-user/test_live_backend.py::test_live_client_setup_page
-[LIVE GET /client-setup] -> HTTP 200 (length=18217 chars)
-PASSED
+[1/9] Health Probe (Unauthenticated Liveness)
+  Invoked  : GET https://your-mcp-backend.example.com/health
+  Auth     : None (public health probe)
+  Status   : HTTP 200 (expected 200) -> [PASS]
+  Response : {"status": "ok", "service": "catalog-mcp-backend", "runtime": "cloud-run"}
+
+[2/9] Negative: Missing Authorization Header
+  Invoked  : POST https://your-mcp-backend.example.com/mcp/v1/tools/list
+  Auth     : None (omitted Authorization header)
+  Status   : HTTP 401 (expected 401) -> [PASS]
+  Response : {"detail": "Missing or malformed Authorization header. Expected 'Bearer <token>'"}
+...
+[7/9] Positive: Execute MCP Tool Call (search_catalog: 'sparkling water')
+  Invoked  : POST https://your-mcp-backend.example.com/mcp/v1/tools/call
+  Auth     : Bearer <exchanged_partner_token, aud='https://your-mcp-backend.example.com'>
+  Status   : HTTP 200 (expected 200) -> [PASS]
+  Response : {"jsonrpc": "2.0", "id": "pos-call-1", "result": {"content": [{"type": "text", "text": "Found 3 catalog results matching query: 'sparkling water'."}], "actor_context": {"gateway": "enterprise-apigee-gateway", "user_ref": "actor:user_developer@example.com"}}}
+...
+====================================================================================
+RESULT: 9/9 LIVE CHECKS PASSED AGAINST https://your-mcp-backend.example.com
+====================================================================================
+  * Open Client & Gateway Setup Page : https://your-mcp-backend.example.com/client-setup
+  * Re-run this live verification    : ./verify
+  * Switch target backend URL        : ./verify https://new-url.example.com
+====================================================================================
 ```
 
 ### Option B: Manual `curl` Verification

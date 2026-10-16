@@ -1,22 +1,38 @@
 """
 Opt-in live integration test suite against a deployed Backend MCP Server.
-Requires the MCP_BACKEND_URL environment variable to be set (e.g., https://your-service.run.app).
+Reads MCP_BACKEND_URL from the environment or falls back to ~/.cache/apigee-mcp-token-exchange/context.json.
 Excluded from default `pytest` runs via pyproject.toml `addopts = "--ignore=tests/integration"`.
+Run with: `pytest tests/integration`
 """
+import json
 import os
+from pathlib import Path
 import time
 import pytest
 import httpx
 from jose import jwt
 
-from mcp_server.server import SECRET_KEY, ALGORITHM, EXPECTED_AUDIENCE
-from mock_idp.app import token_endpoint
+from mcp_server.server import SECRET_KEY as DEFAULT_SECRET_KEY, ALGORITHM, EXPECTED_AUDIENCE
 
-BACKEND_URL = os.environ.get("MCP_BACKEND_URL", "").rstrip("/")
+
+def _load_cached_context() -> dict:
+    xdg = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    cache_file = xdg / "apigee-mcp-token-exchange" / "context.json"
+    if cache_file.exists():
+        try:
+            return json.loads(cache_file.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+
+_CACHED = _load_cached_context()
+BACKEND_URL = (os.environ.get("MCP_BACKEND_URL") or _CACHED.get("backend_url") or "").rstrip("/")
+SECRET_KEY = os.environ.get("MCP_JWT_SECRET") or _CACHED.get("signing_key") or DEFAULT_SECRET_KEY
 
 pytestmark = pytest.mark.skipif(
     not BACKEND_URL,
-    reason="Set MCP_BACKEND_URL=<https://your-deployed-backend> to run live integration tests"
+    reason="Set MCP_BACKEND_URL=<https://your-deployed-backend> or run ./verify <URL> once to cache it"
 )
 
 

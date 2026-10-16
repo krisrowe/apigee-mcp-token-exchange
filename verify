@@ -1,24 +1,42 @@
 #!/usr/bin/env python3
 """
-Verification runner for Apigee MCP Token Exchange.
+Interactive Live Endpoint Verification CLI for the Backend MCP Server.
 
 Usage:
-  ./verify                              # Run fast, offline in-process unit tests
-  ./verify --live https://...           # Cache backend URL and run live positive/negative tests
-  ./verify --live                       # Re-run live tests using cached URL (or prompt if unset)
+  ./verify https://your-mcp-backend.example.com                 # Cache URL & run live HTTP verification
+  ./verify https://your-mcp-backend.example.com --signing-key K # Cache URL + signing key & run
+  ./verify                                                      # Re-run using cached URL (or prompt if unset)
 """
 import argparse
+import base64
+import hashlib
+import hmac
 import json
 import os
-import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent
-VENV_PYTEST = REPO_ROOT / ".venv" / "bin" / "pytest"
+DEFAULT_SIGNING_KEY = "enterprise-reference-secret-key-for-jwt"
+FALLBACK_AUDIENCE = "https://mcp.partner-service.example.com"
 
 XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 CACHE_FILE = XDG_CACHE_HOME / "apigee-mcp-token-exchange" / "context.json"
+
+
+def _b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def sign_jwt_hs256(payload: dict, secret: str) -> str:
+    header = {"alg": "HS256", "typ": "JWT"}
+    h_b64 = _b64url(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    p_b64 = _b64url(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signing_input = f"{h_b64}.{p_b64}".encode("ascii")
+    sig = hmac.new(secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    return f"{h_b64}.{p_b64}.{_b64url(sig)}"
 
 
 def load_cached_context() -> dict:
@@ -39,89 +57,318 @@ def save_cached_context(url: str, signing_key: str | None = None) -> None:
     CACHE_FILE.write_text(json.dumps(ctx, indent=2) + "\n", encoding="utf-8")
 
 
-def ensure_venv() -> Path:
-    if not VENV_PYTEST.exists():
-        print("==> Local .venv not found; running 'make setup' first...")
-        subprocess.run(["make", "setup"], cwd=REPO_ROOT, check=True)
-    return VENV_PYTEST
-
-
-def resolve_live_url(arg_url: str | None, signing_key: str | None = None) -> str:
+def resolve_target(pos_url: str | None, live_url: str | None, signing_key: str | None) -> tuple[str, str, str]:
     ctx = load_cached_context()
-    if arg_url and arg_url != "__PROMPT_OR_CACHE__":
-        url = arg_url.strip().rstrip("/")
+    explicit_url = None
+    if pos_url:
+        explicit_url = pos_url
+    elif live_url and live_url != "__CACHED__":
+        explicit_url = live_url
+
+    if explicit_url:
+        url = explicit_url.strip().rstrip("/")
         save_cached_context(url, signing_key)
-        print(f"==> Target Backend URL : {url}")
-        print(f"==> Saved to XDG cache : {CACHE_FILE}")
-        return url
-
-    cached = ctx.get("backend_url")
-    if cached:
+        url_source = "command-line argument (saved to cache)"
+    elif os.environ.get("MCP_BACKEND_URL"):
+        url = os.environ["MCP_BACKEND_URL"].strip().rstrip("/")
+        url_source = "MCP_BACKEND_URL environment variable"
+    elif ctx.get("backend_url"):
+        url = ctx["backend_url"].strip().rstrip("/")
         if signing_key:
-            save_cached_context(cached, signing_key)
-        print(f"==> Using cached Backend URL : {cached}")
-        print(f"    (Cached in {CACHE_FILE} | Pass --live <NEW_URL> to change)")
-        return cached
+            save_cached_context(url, signing_key)
+        url_source = f"cached in {CACHE_FILE}"
+    else:
+        if not sys.stdin.isatty():
+            print("Error: No cached Backend URL found and stdin is not interactive.", file=sys.stderr)
+            print("Run: ./verify https://your-mcp-backend.example.com", file=sys.stderr)
+            sys.exit(1)
+        entered = input("Enter deployed Backend MCP URL (e.g. https://your-service.run.app): ").strip().rstrip("/")
+        if not entered:
+            print("Error: Backend MCP URL is required.", file=sys.stderr)
+            sys.exit(1)
+        url = entered
+        save_cached_context(url, signing_key)
+        url_source = "interactive prompt (saved to cache)"
 
-    if not sys.stdin.isatty():
-        print("Error: No cached Backend URL found and stdin is not interactive.", file=sys.stderr)
-        print("Pass the URL explicitly: ./verify --live https://your-mcp-backend.example.com", file=sys.stderr)
-        sys.exit(1)
+    ctx = load_cached_context()
+    active_key = (
+        signing_key
+        or os.environ.get("MCP_JWT_SECRET")
+        or ctx.get("signing_key")
+        or DEFAULT_SIGNING_KEY
+    )
+    return url, url_source, active_key
 
-    entered = input("Enter deployed Backend MCP URL (e.g. https://your-service.run.app): ").strip().rstrip("/")
-    if not entered:
-        print("Error: Backend MCP URL is required for --live verification.", file=sys.stderr)
-        sys.exit(1)
 
-    save_cached_context(entered, signing_key)
-    print(f"==> Saved to XDG cache : {CACHE_FILE}")
-    return entered
+def http_call(
+    method: str,
+    url: str,
+    headers: dict[str, str] | None = None,
+    json_body: dict | None = None,
+) -> tuple[int, str]:
+    req_headers = {"Accept": "application/json"}
+    if headers:
+        req_headers.update(headers)
+    data = None
+    if json_body is not None:
+        data = json.dumps(json_body).encode("utf-8")
+        req_headers.setdefault("Content-Type", "application/json")
+
+    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=15.0) as resp:
+            body_bytes = resp.read()
+            return resp.status, body_bytes.decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as err:
+        body_bytes = err.read()
+        return err.code, body_bytes.decode("utf-8", errors="replace")
+    except Exception as exc:
+        return 0, f"Connection Error: {exc}"
+
+
+def format_body_preview(raw: str, status: int) -> str:
+    stripped = raw.strip()
+    if stripped.startswith("<!DOCTYPE html") or stripped.startswith("<html"):
+        return f"<HTML Document ({len(raw)} chars) - open /client-setup in browser>"
+    try:
+        parsed = json.loads(stripped)
+        return json.dumps(parsed)
+    except Exception:
+        return stripped[:240]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="./verify",
-        description="Run offline sociable unit tests or live positive/negative backend verification.",
+        description="Run live positive and negative HTTP verification against a deployed Backend MCP Server.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  ./verify                                              # Run offline in-process unit tests\n"
-            "  ./verify --live https://your-mcp-backend.example.com  # Save URL & run live backend tests\n"
-            "  ./verify --live                                       # Re-run live tests using cached URL\n"
+            "  ./verify https://your-mcp-backend.example.com\n"
+            "  ./verify https://your-mcp-backend.example.com --signing-key <YOUR_SECRET>\n"
+            "  ./verify                                      # Re-runs against cached URL\n\n"
+            "Note: For local unit & integration pytest suites, use:\n"
+            "  make test                                     # Fast in-process unit tests (pytest)\n"
+            "  .venv/bin/pytest tests/integration            # Pytest integration suite\n"
         ),
+    )
+    parser.add_argument(
+        "url",
+        nargs="?",
+        metavar="BACKEND_URL",
+        help="HTTPS URL of the deployed Backend MCP Server (cached in ~/.cache/apigee-mcp-token-exchange/context.json).",
     )
     parser.add_argument(
         "--live",
         nargs="?",
-        const="__PROMPT_OR_CACHE__",
+        const="__CACHED__",
         metavar="BACKEND_URL",
-        help="Run live HTTP positive/negative integration tests against a deployed Backend MCP URL "
-             "(caches URL in ~/.cache/apigee-mcp-token-exchange/context.json for subsequent runs).",
+        help="Optional alias flag for specifying the live Backend MCP URL.",
     )
     parser.add_argument(
         "--signing-key",
         metavar="KEY",
-        help="Optional HS256 JWT signing secret for --live tests (defaults to cached key or repo POC default).",
+        help="Optional HS256 JWT signing secret (cached for subsequent runs; defaults to repo POC secret).",
     )
-    args, pytest_args = parser.parse_known_args()
+    args = parser.parse_args()
 
-    pytest_bin = ensure_venv()
-    env = os.environ.copy()
+    base_url, url_source, secret = resolve_target(args.url, args.live, args.signing_key)
+    key_label = (
+        f"{secret} (repo POC default)"
+        if secret == DEFAULT_SIGNING_KEY
+        else f"{secret[:4]}...{secret[-4:]} (custom signing key)"
+    )
 
-    if args.live is not None:
-        url = resolve_live_url(args.live, args.signing_key)
-        env["MCP_BACKEND_URL"] = url
-        ctx = load_cached_context()
-        active_key = args.signing_key or ctx.get("signing_key")
-        if active_key:
-            env["MCP_JWT_SECRET"] = active_key
-        cmd = [str(pytest_bin), "tests/integration/real-user/", "-v", "-s", *pytest_args]
-    else:
-        print("==> Running fast in-process sociable unit tests (offline)...")
-        cmd = [str(pytest_bin), "-v", "-s", *pytest_args]
+    now = int(time.time())
+    valid_partner_jwt = sign_jwt_hs256(
+        {
+            "iss": "https://identity.example.com/oauth2/v1",
+            "sub": "actor:user_developer@example.com",
+            "aud": base_url,
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read tools:execute",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token",
+        },
+        secret,
+    )
+    fallback_aud_jwt = sign_jwt_hs256(
+        {
+            "iss": "https://identity.example.com/oauth2/v1",
+            "sub": "actor:user_developer@example.com",
+            "aud": FALLBACK_AUDIENCE,
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read tools:execute",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token",
+        },
+        secret,
+    )
+    tampered_jwt = valid_partner_jwt[:-6] + "tamper"
+    wrong_aud_jwt = sign_jwt_hs256(
+        {
+            "iss": "https://identity.example.com/oauth2/v1",
+            "sub": "actor:user_developer@example.com",
+            "aud": "https://wrong-audience.example.com",
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token",
+        },
+        secret,
+    )
+    unexchanged_user_jwt = sign_jwt_hs256(
+        {
+            "iss": "https://identity.example.com/oauth2/v1",
+            "sub": "developer@example.com",
+            "aud": base_url,
+            "iat": now,
+            "exp": now + 3600,
+            "token_use": "user_identity",
+        },
+        secret,
+    )
 
-    result = subprocess.run(cmd, cwd=REPO_ROOT, env=env)
-    return result.returncode
+    print("=" * 84)
+    print("APIGEE MCP BACKEND - LIVE ENDPOINT VERIFICATION")
+    print("=" * 84)
+    print(f"Target Backend URL     : {base_url} ({url_source})")
+    print(f"Client Setup Portal    : {base_url}/client-setup")
+    print(f"Health Check Endpoint  : {base_url}/health")
+    print(f"Cached Context File    : {CACHE_FILE}")
+    print(f"Active Signing Secret  : {key_label}")
+    print("-" * 84)
+
+    checks = [
+        {
+            "name": "Health Probe (Unauthenticated Liveness)",
+            "method": "GET",
+            "url": f"{base_url}/health",
+            "auth_desc": "None (public health probe)",
+            "headers": {},
+            "body": None,
+            "expected": (200,),
+        },
+        {
+            "name": "Negative: Missing Authorization Header",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/list",
+            "auth_desc": "None (omitted Authorization header)",
+            "headers": {},
+            "body": {"jsonrpc": "2.0", "id": "neg-no-auth"},
+            "expected": (401,),
+        },
+        {
+            "name": "Negative: Tampered JWT Signature",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/list",
+            "auth_desc": "Bearer <tampered_signature_jwt>",
+            "headers": {"Authorization": f"Bearer {tampered_jwt}"},
+            "body": {"jsonrpc": "2.0", "id": "neg-tamper"},
+            "expected": (401,),
+        },
+        {
+            "name": "Negative: Wrong Audience Claim (aud='https://wrong-audience.example.com')",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/list",
+            "auth_desc": "Bearer <jwt with aud='https://wrong-audience.example.com'>",
+            "headers": {"Authorization": f"Bearer {wrong_aud_jwt}"},
+            "body": {"jsonrpc": "2.0", "id": "neg-aud"},
+            "expected": (401,),
+        },
+        {
+            "name": "Negative: Unexchanged Corporate User Token (Zero-PII Boundary Enforcement)",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/list",
+            "auth_desc": "Bearer <corporate_jwt with token_use='user_identity'>",
+            "headers": {"Authorization": f"Bearer {unexchanged_user_jwt}"},
+            "body": {"jsonrpc": "2.0", "id": "neg-unexchanged"},
+            "expected": (403,),
+        },
+        {
+            "name": "Positive: List MCP Tools (RFC 8707 Self-Audience Match)",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/list",
+            "auth_desc": f"Bearer <exchanged_partner_token, aud='{base_url}'>",
+            "headers": {"Authorization": f"Bearer {valid_partner_jwt}"},
+            "body": {"jsonrpc": "2.0", "id": "pos-list-1"},
+            "expected": (200,),
+        },
+        {
+            "name": "Positive: Execute MCP Tool Call (search_catalog: 'sparkling water')",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/call",
+            "auth_desc": f"Bearer <exchanged_partner_token, aud='{base_url}'>",
+            "headers": {"Authorization": f"Bearer {valid_partner_jwt}"},
+            "body": {
+                "jsonrpc": "2.0",
+                "id": "pos-call-1",
+                "params": {
+                    "name": "search_catalog",
+                    "arguments": {"query": "sparkling water", "limit": 3},
+                },
+            },
+            "expected": (200,),
+        },
+        {
+            "name": "Negative: Execute Unknown MCP Tool ('unknown_tool')",
+            "method": "POST",
+            "url": f"{base_url}/mcp/v1/tools/call",
+            "auth_desc": f"Bearer <exchanged_partner_token, aud='{base_url}'>",
+            "headers": {"Authorization": f"Bearer {valid_partner_jwt}"},
+            "body": {
+                "jsonrpc": "2.0",
+                "id": "neg-unknown-tool",
+                "params": {"name": "unknown_tool", "arguments": {}},
+            },
+            "expected": (404,),
+        },
+        {
+            "name": "Client & Gateway Setup Portal Probe (/client-setup)",
+            "method": "GET",
+            "url": f"{base_url}/client-setup",
+            "auth_desc": "None (browser setup portal)",
+            "headers": {},
+            "body": None,
+            "expected": (200, 404),
+        },
+    ]
+
+    passed = 0
+    total = len(checks)
+
+    for idx, chk in enumerate(checks, start=1):
+        status, raw_body = http_call(
+            chk["method"],
+            chk["url"],
+            headers=chk["headers"],
+            json_body=chk["body"],
+        )
+        ok = status in chk["expected"]
+        if ok:
+            passed += 1
+        badge = "PASS" if ok else "FAIL"
+        exp_str = "/".join(str(c) for c in chk["expected"])
+        preview = format_body_preview(raw_body, status)
+
+        print(f"\n[{idx}/{total}] {chk['name']}")
+        print(f"  Invoked  : {chk['method']} {chk['url']}")
+        print(f"  Auth     : {chk['auth_desc']}")
+        print(f"  Status   : HTTP {status} (expected {exp_str}) -> [{badge}]")
+        print(f"  Response : {preview}")
+
+    print("\n" + "=" * 84)
+    print(f"RESULT: {passed}/{total} LIVE CHECKS PASSED AGAINST {base_url}")
+    print("=" * 84)
+    print(f"  * Open Client & Gateway Setup Page : {base_url}/client-setup")
+    print(f"  * Re-run this live verification    : ./verify")
+    print(f"  * Switch target backend URL        : ./verify https://new-url.example.com")
+    print("=" * 84)
+
+    return 0 if passed == total else 1
 
 
 if __name__ == "__main__":

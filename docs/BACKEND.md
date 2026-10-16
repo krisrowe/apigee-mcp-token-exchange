@@ -1,4 +1,4 @@
-# Backend MCP Server Integration Guide (`mcp_server/server.py`)
+# Backend MCP Server Integration Guide
 
 > **Part of the [Enterprise Apigee MCP Gateway Reference Architecture](../README.md):**
 > In the full end-to-end architecture, an internal developer IDE authenticates with the corporate Identity Provider (IdP) and sends requests to **Apigee**, which performs an **[IETF RFC 8693 OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)** and forwards a down-scoped partner token to this backend service.
@@ -11,18 +11,20 @@
 
 ## Quick Start: If You Already Have a Deployed `<BACKEND_MCP_URL>`
 
-If someone shared a live Backend MCP URL with you (for example, `https://your-mcp-backend.example.com`), you can immediately verify or integrate with it in three ways:
+If someone shared a live Backend MCP URL with you (for example, `https://your-mcp-backend.example.com`), you can immediately verify or integrate with it in four ways:
 
-1. **Run the Automated 8-Test Positive/Negative Suite (`./verify`):**
+1. **Open the Hosted Client & Gateway Setup Page (`/client-setup`):**
+   If enabled on the deployment (`CLIENT_SETUP_PAGE=SAFE` or `UNSAFE`), open **`<BACKEND_MCP_URL>/client-setup`** directly in your browser. It displays the exact synchronized configuration for that live instance (URL, accepted `aud`, `token_use`, copy-paste Apigee XML snippets) and includes an **in-browser Live Verification Suite** that posts all 8 positive and negative test cases directly to the server.
+2. **Run the Automated 8-Test Positive/Negative CLI (`./verify`):**
    Clone this repository and run `./verify --live` from the root directory (it will save the URL in your local XDG cache so future runs only require `./verify --live`):
    ```bash
    git clone https://github.com/krisrowe/apigee-mcp-token-exchange.git
    cd apigee-mcp-token-exchange
    ./verify --live <BACKEND_MCP_URL>
    ```
-2. **Wire Your Apigee Proxy Target directly to `<BACKEND_MCP_URL>`:**
-   Jump to **[Section 3: Configuring Apigee Proxy Target](#3-configuring-apigee-proxy-target-apiproxytargetsdefaultxml)** for the exact `HTTPTargetConnection` and header requirements.
-3. **Test with Standalone `curl` Commands (Zero Repo Clone Required):**
+3. **Wire Your Apigee Proxy Target directly to `<BACKEND_MCP_URL>`:**
+   Jump to **[Section 3: Configuring the Apigee Proxy Target](#3-configuring-the-apigee-proxy-target)** for the exact `HTTPTargetConnection` and header requirements.
+4. **Test with Standalone `curl` Commands (Zero Repo Clone Required):**
    Jump to **[Section 4B: Manual `curl` Verification](#option-b-manual-curl-verification)** to test the live endpoints directly from any terminal.
 
 ---
@@ -50,7 +52,7 @@ The backend MCP server enforces a strict **Zero-PII Partner Boundary**:
 | Claim | Required Value / Format | Enforcement Behavior |
 | :--- | :--- | :--- |
 | **`Authorization` Header** | `Bearer <exchanged_partner_jwt>` | Missing or non-Bearer header returns **`HTTP 401 Unauthorized`**. |
-| **`aud` (Audience)** | `https://mcp.partner-service.example.com` | Mismatched audience or invalid signature returns **`HTTP 401 Unauthorized`**. |
+| **`aud` (Audience)** | `<BACKEND_MCP_URL>` *(or `https://mcp.partner-service.example.com`)* | Matches the service's own base URL per [RFC 8707](https://datatracker.ietf.org/doc/html/rfc8707) (or `MCP_EXPECTED_AUDIENCE`). Mismatched audience or invalid signature returns **`HTTP 401 Unauthorized`**. |
 | **`token_use`** | `exchanged_partner_token` | Any other value (e.g., `user_identity` from an unexchanged corporate SSO token) returns **`HTTP 403 Forbidden`**. |
 | **`sub` (Subject)** | Pseudonymous or delegated actor reference (e.g., `actor:user_developer@example.com`) | Recorded in `_meta.delegated_subject` and `actor_context.user_ref`. |
 | **`act` (Actor)** | `{"sub": "enterprise-apigee-gateway"}` | Recorded in `_meta.caller_actor` and `actor_context.gateway`. |
@@ -65,6 +67,7 @@ Base URL placeholder: **`<BACKEND_MCP_URL>`** (for example, `https://your-mcp-ba
 | Endpoint | Method | Auth Required | Scenario | Expected HTTP Status |
 | :--- | :--- | :--- | :--- | :--- |
 | `/` or `/health` | `GET` | No | Liveness / readiness probe | **`200 OK`** |
+| `/client-setup` | `GET` | No | Interactive Client & Gateway Setup Page (`CLIENT_SETUP_PAGE=SAFE\|UNSAFE`; disabled `404` when `OFF`) | **`200 OK`** *(or `404`)* |
 | `/mcp/v1/tools/list` | `POST` | Yes (`Bearer`) | Valid exchanged partner token (`token_use="exchanged_partner_token"`) | **`200 OK`** |
 | `/mcp/v1/tools/call` | `POST` | Yes (`Bearer`) | Valid exchanged partner token + `name="search_catalog"` | **`200 OK`** |
 | `/mcp/v1/tools/list` | `POST` | Yes (`Bearer`) | Missing `Authorization` header | **`401 Unauthorized`** |
@@ -75,7 +78,7 @@ Base URL placeholder: **`<BACKEND_MCP_URL>`** (for example, `https://your-mcp-ba
 
 ---
 
-## 3. Configuring Apigee Proxy Target (`apiproxy/targets/default.xml`)
+## 3. Configuring the Apigee Proxy Target
 
 To connect your Apigee API Proxy to the deployed backend at `<BACKEND_MCP_URL>`:
 
@@ -201,6 +204,6 @@ PASSED
 
 ## Related Guides in This Repository
 
-- **[Main Architecture & Local Test Harness (`README.md`)](../README.md):** End-to-end sequence diagrams, RFC 9728 OAuth discovery, interactive browser console (`make console`), and IDE/CLI agent bridge (`client_bridge.py`).
-- **[Optional Cloud Run Deployment Guide (`docs/CLOUD-RUN.md`)](CLOUD-RUN.md):** How to publish [`mcp_server/server.py`](../mcp_server/server.py) to Cloud Run using standard `gcloud run deploy` or `gapp`.
-- **[Apigee API Proxy Bundle (`apiproxy/`)](../apiproxy/):** Production XML policies for `<VerifyJWT>`, `<ServiceCallout>` (RFC 8693 Token Exchange), and `<AssignMessage>`.
+- **[Main Architecture & Local Test Harness](../README.md):** End-to-end sequence diagrams, RFC 9728 OAuth discovery, interactive browser console (`make console`), and IDE/CLI agent bridge.
+- **[Optional Cloud Run Deployment Guide](CLOUD-RUN.md):** How to publish the backend MCP server to Cloud Run using standard `gcloud run deploy` or `gapp`.
+- **[Apigee API Proxy Bundle](../apiproxy/):** Production XML policies for `<VerifyJWT>`, `<ServiceCallout>` (RFC 8693 Token Exchange), and `<AssignMessage>`.

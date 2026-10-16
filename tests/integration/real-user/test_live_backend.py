@@ -166,3 +166,34 @@ async def test_live_negative_unknown_tool_404(exchanged_partner_jwt: str):
         )
         print(f"\n[LIVE POST /mcp/v1/tools/call (unknown_tool)] -> HTTP {resp.status_code} | {resp.json()}")
         assert resp.status_code == 404
+
+
+async def test_live_positive_own_url_as_audience_200(user_jwt: str):
+    """Verify RFC 8707 dynamic audience matching against the live deployed URL."""
+    self_aud_jwt = token_endpoint(
+        grant_type="urn:ietf:params:oauth:grant-type:token-exchange",
+        code=None,
+        client_id="enterprise-apigee-gateway",
+        client_secret=None,
+        subject_token=user_jwt,
+        subject_token_type="urn:ietf:params:oauth:token-type:access_token",
+        audience=BACKEND_URL,
+        scope="tools:read tools:execute"
+    )["access_token"]
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.post(
+            f"{BACKEND_URL}/mcp/v1/tools/list",
+            headers={"Authorization": f"Bearer {self_aud_jwt}"},
+            json={"jsonrpc": "2.0", "id": "live-self-aud"}
+        )
+        print(f"\n[LIVE POST /mcp/v1/tools/list (aud={BACKEND_URL})] -> HTTP {resp.status_code}")
+        assert resp.status_code == 200
+
+
+async def test_live_client_setup_page():
+    """Verify /client-setup endpoint responds with 200 (when SAFE/UNSAFE) or 404 (when OFF)."""
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(f"{BACKEND_URL}/client-setup")
+        print(f"\n[LIVE GET /client-setup] -> HTTP {resp.status_code} (length={len(resp.text)} chars)")
+        assert resp.status_code in (200, 404)
+

@@ -11,9 +11,9 @@ This architecture leverages two open standards:
 | Role / Goal | Where to Start |
 | :--- | :--- |
 | **Evaluate Locally (60 Seconds)** | Jump to **[Quickstart](#quickstart-run--test-locally-in-60-seconds)** (`./verify` for unit tests or `make console` for the [Interactive Protocol Console](#interactive-protocol-console-live-network-demo)). |
-| **Integrate Apigee with a Backend MCP URL** | Read **[Backend MCP Server Integration Guide (`docs/BACKEND.md`)](docs/BACKEND.md)** for the token contract, HTTP status matrix (`200`/`401`/`403`/`404`), and `./verify --live` verification. |
-| **Deploy the Backend to Cloud Run (Optional)** | Read **[Publishing the Backend MCP Server to Cloud Run (`docs/CLOUD-RUN.md`)](docs/CLOUD-RUN.md)** for one-command `gcloud run deploy` or `gapp` setup. |
-| **Connect an IDE / CLI Coding Agent** | Jump to **[CLI Agent & IDE Integration](#cli-agent--ide-integration-client_bridgepy)** (`client_bridge.py`). |
+| **Integrate Apigee with a Backend MCP URL** | Read **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the token contract, HTTP status matrix (`200`/`401`/`403`/`404`), and `./verify --live` verification. |
+| **Deploy the Backend to Cloud Run (Optional)** | Read **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for one-command `gcloud run deploy` setup. |
+| **Connect an IDE / CLI Coding Agent** | Jump to **[CLI Agent & IDE Integration](#cli-agent--ide-integration)** to connect Antigravity CLI, Claude Code, Cursor, or VS Code. |
 
 ---
 
@@ -162,17 +162,17 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
    - Update `<URL>` to your IdP's token endpoint (`https://your-org.okta.com/oauth2/default/v1/token`).
    - Set `<FormParam name="audience">` to the target SaaS partner's audience identifier.
 3. **Outbound Partner Target (`targets/default.xml`):**
-   - Point `<URL>` to the partner's HTTPS MCP endpoint (e.g. `https://mcp.partner-service.com`). See **[`docs/BACKEND.md`](docs/BACKEND.md#3-configuring-apigee-proxy-target-apiproxytargetsdefaultxml)** for the complete target configuration and token contract.
+   - Point `<URL>` to the partner's HTTPS MCP endpoint (e.g. `https://mcp.partner-service.com`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md#3-configuring-the-apigee-proxy-target)** for the complete target configuration and token contract.
 
 ---
 
 ## Backend Integration & Cloud Deployment Guides
 
-### 1. Integrating with the Backend MCP Server ([`docs/BACKEND.md`](docs/BACKEND.md))
-Once the reference Backend MCP Server ([`mcp_server/server.py`](mcp_server/server.py)) is reachable at an HTTPS URL, Apigee (or any RFC 8693 Token Exchange broker) connects to its `/mcp/v1/tools/list` and `/mcp/v1/tools/call` endpoints using down-scoped partner tokens (`aud: https://mcp.partner-service.example.com`, `token_use: exchanged_partner_token`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the complete token verification contract, HTTP status code matrix (`200`, `401`, `403`, `404`), Apigee `TargetEndpoint` wiring, and `./verify --live` verification commands.
+### 1. Integrating with the Backend MCP Server
+Once the reference Backend MCP Server is reachable at an HTTPS URL, Apigee (or any RFC 8693 Token Exchange broker) connects to its `/mcp/v1/tools/list` and `/mcp/v1/tools/call` endpoints using down-scoped partner tokens (`aud: https://mcp.partner-service.example.com`, `token_use: exchanged_partner_token`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the complete token verification contract, HTTP status code matrix (`200`, `401`, `403`, `404`), Apigee `TargetEndpoint` wiring, and `./verify --live` verification commands.
 
-### 2. Optional: Publishing the Backend to Cloud Run ([`docs/CLOUD-RUN.md`](docs/CLOUD-RUN.md))
-While the backend integration contract is completely cloud-agnostic, you can host the backend MCP server as a public serverless container on Cloud Run in a single command. See **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for step-by-step instructions using standard `gcloud run deploy` commands (no extra tools required) or `gapp`, including how to handle enterprise `iam.allowedPolicyMemberDomains` organization policies.
+### 2. Optional: Publishing the Backend to Cloud Run
+While the backend integration contract is completely cloud-agnostic, you can host the backend MCP server as a public serverless container on Cloud Run in a single command. See **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for step-by-step instructions using standard `gcloud run deploy` commands, including how to handle enterprise `iam.allowedPolicyMemberDomains` organization policies.
 
 ---
 
@@ -181,6 +181,7 @@ While the backend integration contract is completely cloud-agnostic, you can hos
 ```text
 .
 ├── verify                  # Executable CLI for unit & sticky live backend verification
+├── CONTRIBUTING.md         # Architecture boundaries, test tiers & maintainer notes
 ├── Makefile                # setup, test, console, bundle, clean
 ├── pyproject.toml          # Test harness dependencies (FastAPI, FastMCP, Pytest)
 ├── gapp.yaml               # Optional declarative Cloud Run deployment manifest
@@ -274,7 +275,7 @@ The test console supports dynamic URL query parameters so you can toggle between
 
 ---
 
-## CLI Agent & IDE Integration (`client_bridge.py`)
+## CLI Agent & IDE Integration
 
 You can connect real coding agents (Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
 
@@ -385,6 +386,6 @@ The deployable zip bundle is generated at `dist/apigee-mcp-token-exchange.zip`. 
 
 ## Contributing & License
 
-Contributions, issues, and feature requests are welcome.
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for architecture boundaries, test suite conventions, and maintainer guidelines. Contributions, issues, and feature requests are welcome.
 
 Licensed under the [MIT License](LICENSE).

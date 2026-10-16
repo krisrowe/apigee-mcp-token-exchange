@@ -1,4 +1,4 @@
-# Enterprise Apigee MCP Gateway — Token Exchange & Discovery
+# Enterprise Apigee MCP Gateway: Token Exchange & Discovery
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -7,6 +7,13 @@ A production-grade, vendor-neutral reference architecture and runnable test harn
 This architecture leverages two open standards:
 - **[IETF RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693):** OAuth 2.0 Token Exchange
 - **[IETF RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728):** OAuth 2.0 Protected Resource Metadata Discovery
+
+| Role / Goal | Where to Start |
+| :--- | :--- |
+| **Evaluate Locally (60 Seconds)** | Jump to **[Quickstart](#quickstart-run--test-locally-in-60-seconds)** (`./verify` for unit tests or `make console` for the [Interactive Protocol Console](#interactive-protocol-console-live-network-demo)). |
+| **Integrate Apigee with a Backend MCP URL** | Read **[Backend MCP Server Integration Guide (`docs/BACKEND.md`)](docs/BACKEND.md)** for the token contract, HTTP status matrix (`200`/`401`/`403`/`404`), and `./verify --live` verification. |
+| **Deploy the Backend to Cloud Run (Optional)** | Read **[Publishing the Backend MCP Server to Cloud Run (`docs/CLOUD-RUN.md`)](docs/CLOUD-RUN.md)** for one-command `gcloud run deploy` or `gapp` setup. |
+| **Connect an IDE / CLI Coding Agent** | Jump to **[CLI Agent & IDE Integration](#cli-agent--ide-integration-client_bridgepy)** (`client_bridge.py`). |
 
 ---
 
@@ -155,7 +162,17 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
    - Update `<URL>` to your IdP's token endpoint (`https://your-org.okta.com/oauth2/default/v1/token`).
    - Set `<FormParam name="audience">` to the target SaaS partner's audience identifier.
 3. **Outbound Partner Target (`targets/default.xml`):**
-   - Point `<URL>` to the partner's HTTPS MCP endpoint (e.g. `https://mcp.partner-service.com`).
+   - Point `<URL>` to the partner's HTTPS MCP endpoint (e.g. `https://mcp.partner-service.com`). See **[`docs/BACKEND.md`](docs/BACKEND.md#3-configuring-apigee-proxy-target-apiproxytargetsdefaultxml)** for the complete target configuration and token contract.
+
+---
+
+## Backend Integration & Cloud Deployment Guides
+
+### 1. Integrating with the Backend MCP Server ([`docs/BACKEND.md`](docs/BACKEND.md))
+Once the reference Backend MCP Server ([`mcp_server/server.py`](mcp_server/server.py)) is reachable at an HTTPS URL, Apigee (or any RFC 8693 Token Exchange broker) connects to its `/mcp/v1/tools/list` and `/mcp/v1/tools/call` endpoints using down-scoped partner tokens (`aud: https://mcp.partner-service.example.com`, `token_use: exchanged_partner_token`). See the **[Backend MCP Server Integration Guide](docs/BACKEND.md)** for the complete token verification contract, HTTP status code matrix (`200`, `401`, `403`, `404`), Apigee `TargetEndpoint` wiring, and `./verify --live` verification commands.
+
+### 2. Optional: Publishing the Backend to Cloud Run ([`docs/CLOUD-RUN.md`](docs/CLOUD-RUN.md))
+While the backend integration contract is completely cloud-agnostic, you can host the backend MCP server as a public serverless container on Cloud Run in a single command. See **[Publishing the Backend MCP Server to Cloud Run](docs/CLOUD-RUN.md)** for step-by-step instructions using standard `gcloud run deploy` commands (no extra tools required) or `gapp`, including how to handle enterprise `iam.allowedPolicyMemberDomains` organization policies.
 
 ---
 
@@ -163,12 +180,19 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 
 ```text
 .
+├── verify                  # Executable CLI for unit & sticky live backend verification
 ├── Makefile                # setup, test, console, bundle, clean
 ├── pyproject.toml          # Test harness dependencies (FastAPI, FastMCP, Pytest)
+├── gapp.yaml               # Optional declarative Cloud Run deployment manifest
 ├── architecture_flow.mmd   # Source Mermaid sequence diagram
 ├── console.html            # Interactive visual protocol console for live network tracing
 ├── run_console.py          # One-command local console & mock service runner
 ├── client_bridge.py        # Stdio-to-HTTP MCP bridge for CLI agents & IDEs
+│
+├── docs/
+│   ├── BACKEND.md          # Cloud-agnostic backend MCP contract, status codes & verification
+│   ├── CLOUD-RUN.md        # Optional guide to publish the backend MCP server to Cloud Run
+│   └── console-preview.png # Visual protocol console screenshot
 │
 ├── apiproxy/               # Production Apigee API Proxy Bundle
 │   ├── apiproxy.xml
@@ -184,7 +208,11 @@ The included [`apiproxy/`](apiproxy/) bundle uses standard Apigee policies. To m
 │   └── app.py
 │
 └── tests/
-    └── test_e2e.py         # Automated sociable end-to-end integration test suite
+    ├── unit/               # Fast, offline in-process sociable unit tests (default pytest)
+    │   └── test_protocol_flow.py
+    └── integration/        # Opt-in live integration tests against a deployed backend URL
+        └── real-user/
+            └── test_live_backend.py
 ```
 
 ---
@@ -248,7 +276,7 @@ The test console supports dynamic URL query parameters so you can toggle between
 
 ## CLI Agent & IDE Integration (`client_bridge.py`)
 
-You can connect real coding agents (Antigravity CLI, Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
+You can connect real coding agents (Antigravity CLI, Claude Code, Cursor, VS Code) directly to the gateway via the included stdio bridge:
 
 ### 1. Antigravity CLI (`agy`)
 
@@ -319,16 +347,33 @@ claude -p "Use the enterprise-catalog tool to search for organic produce"
 make setup
 ```
 
-### 2. Run the End-to-End Test Suite
+### 2. Run the Test Suite
+
+#### Fast In-Process Unit Tests (Default)
 ```bash
+./verify
+# Or via Make / pytest:
 make test
 ```
-This launches all three local services over loopback ports (`8080`, `8081`, `8082`) and tests:
-- RFC 9728 discovery 401 challenge and headers.
-- User SSO token acquisition.
-- Dynamic token exchange via the gateway.
-- Successful MCP tool call execution (`search_catalog`).
-- Rejection of direct corporate token presentation.
+Runs completely in-process via `httpx.ASGITransport` with zero local port bindings or network dependencies, verifying all positive (`200`) and negative (`401`, `403`, `404`) protocol scenarios:
+- Health probe (`GET /` $\rightarrow$ `200`).
+- RFC 9728 discovery challenge (`GET /.well-known/oauth-protected-resource` $\rightarrow$ `401` + `WWW-Authenticate` header).
+- Missing `Authorization` header rejection (`401`).
+- Tampered JWT signature rejection (`401`).
+- Wrong `aud` claim rejection (`401`).
+- Direct corporate user token rejection (`token_use="user_identity"` $\rightarrow$ `403`).
+- Valid RFC 8693 exchanged partner token acceptance on `tools/list` (`200`) and `tools/call` (`search_catalog` $\rightarrow$ `200`).
+- Unknown tool call rejection (`404`).
+
+#### Opt-In Live Integration Tests (Against a Deployed Backend URL)
+To run the same positive and negative test suite over HTTPS against a deployed backend instance (see [docs/BACKEND.md](docs/BACKEND.md)), use `--live` (which caches the URL in `~/.cache/apigee-mcp-token-exchange/context.json` or prompts interactively if omitted):
+```bash
+# First run (saves URL to XDG cache):
+./verify --live https://your-mcp-backend.example.com
+
+# Subsequent runs (automatically reuses cached URL):
+./verify --live
+```
 
 ### 3. Build Deployable Apigee Bundle
 ```bash

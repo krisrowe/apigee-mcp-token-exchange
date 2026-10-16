@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""
+Verification runner for Apigee MCP Token Exchange.
+
+Usage:
+  ./verify                              # Run fast, offline in-process unit tests
+  ./verify --live https://...           # Cache backend URL and run live positive/negative tests
+  ./verify --live                       # Re-run live tests using cached URL (or prompt if unset)
+"""
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent
+VENV_PYTEST = REPO_ROOT / ".venv" / "bin" / "pytest"
+
+XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+CACHE_FILE = XDG_CACHE_HOME / "apigee-mcp-token-exchange" / "context.json"
+
+
+def load_cached_url() -> str | None:
+    if CACHE_FILE.exists():
+        try:
+            data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+            return data.get("backend_url")
+        except Exception:
+            return None
+    return None
+
+
+def save_cached_url(url: str) -> None:
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CACHE_FILE.write_text(json.dumps({"backend_url": url}, indent=2) + "\n", encoding="utf-8")
+
+
+def ensure_venv() -> Path:
+    if not VENV_PYTEST.exists():
+        print("==> Local .venv not found; running 'make setup' first...")
+        subprocess.run(["make", "setup"], cwd=REPO_ROOT, check=True)
+    return VENV_PYTEST
+
+
+def resolve_live_url(arg_url: str | None) -> str:
+    if arg_url and arg_url != "__PROMPT_OR_CACHE__":
+        url = arg_url.strip().rstrip("/")
+        save_cached_url(url)
+        print(f"==> Target Backend URL : {url}")
+        print(f"==> Saved to XDG cache : {CACHE_FILE}")
+        return url
+
+    cached = load_cached_url()
+    if cached:
+        print(f"==> Using cached Backend URL : {cached}")
+        print(f"    (Cached in {CACHE_FILE} | Pass --live <NEW_URL> to change)")
+        return cached
+
+    if not sys.stdin.isatty():
+        print("Error: No cached Backend URL found and stdin is not interactive.", file=sys.stderr)
+        print("Pass the URL explicitly: ./verify --live https://your-mcp-backend.example.com", file=sys.stderr)
+        sys.exit(1)
+
+    entered = input("Enter deployed Backend MCP URL (e.g. https://your-service.run.app): ").strip().rstrip("/")
+    if not entered:
+        print("Error: Backend MCP URL is required for --live verification.", file=sys.stderr)
+        sys.exit(1)
+
+    save_cached_url(entered)
+    print(f"==> Saved to XDG cache : {CACHE_FILE}")
+    return entered
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="./verify",
+        description="Run offline sociable unit tests or live positive/negative backend verification.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  ./verify                                              # Run offline in-process unit tests\n"
+            "  ./verify --live https://your-mcp-backend.example.com  # Save URL & run live backend tests\n"
+            "  ./verify --live                                       # Re-run live tests using cached URL\n"
+        ),
+    )
+    parser.add_argument(
+        "--live",
+        nargs="?",
+        const="__PROMPT_OR_CACHE__",
+        metavar="BACKEND_URL",
+        help="Run live HTTP positive/negative integration tests against a deployed Backend MCP URL "
+             "(caches URL in ~/.cache/apigee-mcp-token-exchange/context.json for subsequent runs).",
+    )
+    args, pytest_args = parser.parse_known_args()
+
+    pytest_bin = ensure_venv()
+    env = os.environ.copy()
+
+    if args.live is not None:
+        url = resolve_live_url(args.live)
+        env["MCP_BACKEND_URL"] = url
+        cmd = [str(pytest_bin), "tests/integration/real-user/", "-v", "-s", *pytest_args]
+    else:
+        print("==> Running fast in-process sociable unit tests (offline)...")
+        cmd = [str(pytest_bin), "-v", "-s", *pytest_args]
+
+    result = subprocess.run(cmd, cwd=REPO_ROOT, env=env)
+    return result.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

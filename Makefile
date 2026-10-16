@@ -14,7 +14,8 @@ $(VENV)/bin/activate: pyproject.toml
 	touch $(VENV)/bin/activate
 
 test: setup
-	$(PYTHON) -m pytest -v tests/
+	$(PYTHON) -m pytest -v
+
 
 console: setup
 	$(PYTHON) run_console.py

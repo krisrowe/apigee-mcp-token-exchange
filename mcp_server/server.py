@@ -39,6 +39,11 @@ def verify_partner_token(authorization: str = Header(None)) -> Dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid partner token: {str(e)}")
 
+@app.get("/")
+@app.get("/healthz")
+async def health_check():
+    return {"status": "ok", "service": "catalog-mcp-backend", "runtime": "cloud-run"}
+
 @app.post("/mcp/v1/tools/list")
 async def list_tools(request: Request, authorization: str = Header(None)):
     claims = verify_partner_token(authorization)

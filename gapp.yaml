@@ -1,0 +1,4 @@
+name: catalog-mcp-backend
+public: true
+service:
+  entrypoint: mcp_server.server:app

@@ -95,11 +95,13 @@ gcloud run services add-iam-policy-binding catalog-mcp-backend \
 
 ## Next Step: Verify and Integrate with Apigee
 
-Once deployed, run `./verify --live` with your Cloud Run HTTPS URL to execute all 8 positive and negative HTTP assertions (and save the URL in your local XDG cache for subsequent runs):
+Once deployed, run `./verify --live` with your Cloud Run HTTPS URL to execute all 10 positive and negative HTTP assertions (and save the URL in your local XDG cache for subsequent runs):
 
 ```bash
 ./verify --live https://catalog-mcp-backend-<hash>-uc.a.run.app
 ```
+
+If you enabled `CLIENT_SETUP_PAGE=SAFE` or `UNSAFE`, you can also open **`https://catalog-mcp-backend-<hash>-uc.a.run.app/client-setup`** directly in your browser to view the synchronized configuration and run the in-browser test suite.
 
 Then follow the **[Backend MCP Server Integration Guide](BACKEND.md)** to wire the URL into your Apigee proxy's [`apiproxy/targets/default.xml`](../apiproxy/targets/default.xml) or test it in the visual protocol console (`console.html?backend=https://...`).
 

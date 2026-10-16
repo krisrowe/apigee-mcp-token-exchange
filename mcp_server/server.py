@@ -448,7 +448,7 @@ async def client_setup_page(request: Request):
       <p class="sub"><strong>CLI Verification (from cloned repository):</strong></p>
       <pre>git clone https://github.com/krisrowe/apigee-mcp-token-exchange.git
 cd apigee-mcp-token-exchange
-./verify --live {base_url}</pre>
+./verify --live {base_url} --signing-key {SECRET_KEY if is_unsafe else '<YOUR_MCP_JWT_SECRET>'}</pre>
 
       <p class="sub"><strong>Direct <code>curl</code> Verification:</strong></p>
       <pre># 1. Negative Test: Missing Authorization Header (Expected: HTTP 401)

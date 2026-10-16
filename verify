@@ -21,19 +21,22 @@ XDG_CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 CACHE_FILE = XDG_CACHE_HOME / "apigee-mcp-token-exchange" / "context.json"
 
 
-def load_cached_url() -> str | None:
+def load_cached_context() -> dict:
     if CACHE_FILE.exists():
         try:
-            data = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-            return data.get("backend_url")
+            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
         except Exception:
-            return None
-    return None
+            return {}
+    return {}
 
 
-def save_cached_url(url: str) -> None:
+def save_cached_context(url: str, signing_key: str | None = None) -> None:
+    ctx = load_cached_context()
+    ctx["backend_url"] = url
+    if signing_key:
+        ctx["signing_key"] = signing_key
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CACHE_FILE.write_text(json.dumps({"backend_url": url}, indent=2) + "\n", encoding="utf-8")
+    CACHE_FILE.write_text(json.dumps(ctx, indent=2) + "\n", encoding="utf-8")
 
 
 def ensure_venv() -> Path:
@@ -43,16 +46,19 @@ def ensure_venv() -> Path:
     return VENV_PYTEST
 
 
-def resolve_live_url(arg_url: str | None) -> str:
+def resolve_live_url(arg_url: str | None, signing_key: str | None = None) -> str:
+    ctx = load_cached_context()
     if arg_url and arg_url != "__PROMPT_OR_CACHE__":
         url = arg_url.strip().rstrip("/")
-        save_cached_url(url)
+        save_cached_context(url, signing_key)
         print(f"==> Target Backend URL : {url}")
         print(f"==> Saved to XDG cache : {CACHE_FILE}")
         return url
 
-    cached = load_cached_url()
+    cached = ctx.get("backend_url")
     if cached:
+        if signing_key:
+            save_cached_context(cached, signing_key)
         print(f"==> Using cached Backend URL : {cached}")
         print(f"    (Cached in {CACHE_FILE} | Pass --live <NEW_URL> to change)")
         return cached
@@ -67,7 +73,7 @@ def resolve_live_url(arg_url: str | None) -> str:
         print("Error: Backend MCP URL is required for --live verification.", file=sys.stderr)
         sys.exit(1)
 
-    save_cached_url(entered)
+    save_cached_context(entered, signing_key)
     print(f"==> Saved to XDG cache : {CACHE_FILE}")
     return entered
 
@@ -92,14 +98,23 @@ def main() -> int:
         help="Run live HTTP positive/negative integration tests against a deployed Backend MCP URL "
              "(caches URL in ~/.cache/apigee-mcp-token-exchange/context.json for subsequent runs).",
     )
+    parser.add_argument(
+        "--signing-key",
+        metavar="KEY",
+        help="Optional HS256 JWT signing secret for --live tests (defaults to cached key or repo POC default).",
+    )
     args, pytest_args = parser.parse_known_args()
 
     pytest_bin = ensure_venv()
     env = os.environ.copy()
 
     if args.live is not None:
-        url = resolve_live_url(args.live)
+        url = resolve_live_url(args.live, args.signing_key)
         env["MCP_BACKEND_URL"] = url
+        ctx = load_cached_context()
+        active_key = args.signing_key or ctx.get("signing_key")
+        if active_key:
+            env["MCP_JWT_SECRET"] = active_key
         cmd = [str(pytest_bin), "tests/integration/real-user/", "-v", "-s", *pytest_args]
     else:
         print("==> Running fast in-process sociable unit tests (offline)...")

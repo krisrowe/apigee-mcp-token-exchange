@@ -120,19 +120,22 @@ console.html?backend=https://your-mcp-backend.example.com
 
 ### Option A: Automated Positive & Negative Verification CLI (`./verify`)
 
-The repository includes an executable [`./verify`](../verify) CLI script at the project root that runs all 8 positive (`200`) and negative (`401`, `403`, `404`) test cases against your deployed backend URL and caches the URL in `~/.cache/apigee-mcp-token-exchange/context.json` for subsequent runs:
+The repository includes an executable [`./verify`](../verify) CLI script at the project root that runs all 10 positive (`200`) and negative (`401`, `403`, `404`) test cases against your deployed backend URL and caches the URL (and optional `--signing-key`) in `~/.cache/apigee-mcp-token-exchange/context.json` for subsequent runs:
 
 ```bash
 # First run: pass your Backend MCP URL (or omit it to be prompted interactively)
 ./verify --live https://your-mcp-backend.example.com
 
-# Subsequent runs: automatically reuses your cached URL
+# Optional: if deployed with a custom MCP_JWT_SECRET, pass --signing-key once (also cached)
+./verify --live https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
+
+# Subsequent runs: automatically reuses your cached URL and signing key
 ./verify --live
 ```
 
 *(For CI/CD pipelines, you can also invoke `pytest` directly via `MCP_BACKEND_URL=https://your-mcp-backend.example.com .venv/bin/pytest tests/integration/real-user/ -v -s`.)*
 
-**Expected Output (`8 passed` across positive and negative HTTP assertions):**
+**Expected Output (`10 passed` across positive and negative HTTP assertions):**
 ```text
 ==> Target Backend URL : https://your-mcp-backend.example.com
 ==> Saved to XDG cache : ~/.cache/apigee-mcp-token-exchange/context.json
@@ -147,7 +150,7 @@ tests/integration/real-user/test_live_backend.py::test_live_negative_tampered_si
 [LIVE POST /mcp/v1/tools/list (Tampered Signature)] -> HTTP 401 | {'detail': 'Invalid partner token: Signature verification failed.'}
 PASSED
 tests/integration/real-user/test_live_backend.py::test_live_negative_wrong_audience_401
-[LIVE POST /mcp/v1/tools/list (Wrong Audience)] -> HTTP 401 | {'detail': 'Invalid partner token: Invalid audience'}
+[LIVE POST /mcp/v1/tools/list (Wrong Audience)] -> HTTP 401 | {'detail': "Invalid partner token: Invalid audience 'https://wrong-audience.example.com'..."}
 PASSED
 tests/integration/real-user/test_live_backend.py::test_live_negative_unexchanged_corporate_token_403
 [LIVE POST /mcp/v1/tools/list (Unexchanged Corporate Token)] -> HTTP 403 | {'detail': 'Token is not an exchanged partner token. Direct corporate user tokens rejected.'}
@@ -160,6 +163,12 @@ tests/integration/real-user/test_live_backend.py::test_live_positive_tools_call_
 PASSED
 tests/integration/real-user/test_live_backend.py::test_live_negative_unknown_tool_404
 [LIVE POST /mcp/v1/tools/call (unknown_tool)] -> HTTP 404 | {'detail': "Tool 'unknown_tool' not found"}
+PASSED
+tests/integration/real-user/test_live_backend.py::test_live_positive_own_url_as_audience_200
+[LIVE POST /mcp/v1/tools/list (aud=https://your-mcp-backend.example.com)] -> HTTP 200
+PASSED
+tests/integration/real-user/test_live_backend.py::test_live_client_setup_page
+[LIVE GET /client-setup] -> HTTP 200 (length=18217 chars)
 PASSED
 ```
 
@@ -205,5 +214,5 @@ PASSED
 ## Related Guides in This Repository
 
 - **[Main Architecture & Local Test Harness](../README.md):** End-to-end sequence diagrams, RFC 9728 OAuth discovery, interactive browser console (`make console`), and IDE/CLI agent bridge.
-- **[Optional Cloud Run Deployment Guide](CLOUD-RUN.md):** How to publish the backend MCP server to Cloud Run using standard `gcloud run deploy` or `gapp`.
+- **[Optional Cloud Run Deployment Guide](CLOUD-RUN.md):** How to publish the backend MCP server to Cloud Run using standard `gcloud run deploy`.
 - **[Apigee API Proxy Bundle](../apiproxy/):** Production XML policies for `<VerifyJWT>`, `<ServiceCallout>` (RFC 8693 Token Exchange), and `<AssignMessage>`.

@@ -22,32 +22,39 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def user_jwt() -> str:
-    res = token_endpoint(
-        grant_type="client_credentials",
-        code=None,
-        client_id="enterprise-ai-agent",
-        client_secret=None,
-        subject_token=None,
-        subject_token_type=None,
-        audience=None,
-        scope="mcp:tools:execute"
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "iss": "http://localhost:8081",
+            "sub": "user_developer@example.com",
+            "aud": "enterprise-api-gateway",
+            "groups": ["engineering", "ai-assistants"],
+            "iat": now,
+            "exp": now + 3600,
+            "token_use": "user_identity"
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM
     )
-    return res["access_token"]
 
 
 @pytest.fixture(scope="module")
 def exchanged_partner_jwt(user_jwt: str) -> str:
-    res = token_endpoint(
-        grant_type="urn:ietf:params:oauth:grant-type:token-exchange",
-        code=None,
-        client_id="enterprise-apigee-gateway",
-        client_secret=None,
-        subject_token=user_jwt,
-        subject_token_type="urn:ietf:params:oauth:token-type:access_token",
-        audience=EXPECTED_AUDIENCE,
-        scope="tools:read tools:execute"
+    now = int(time.time())
+    return jwt.encode(
+        {
+            "iss": "http://localhost:8081",
+            "sub": "actor:user_developer@example.com",
+            "aud": BACKEND_URL or EXPECTED_AUDIENCE,
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read tools:execute",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token"
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM
     )
-    return res["access_token"]
 
 
 async def test_live_health_check_200():
@@ -76,17 +83,22 @@ async def test_live_negative_tampered_signature_401(exchanged_partner_jwt: str):
         assert resp.status_code == 401
 
 
-async def test_live_negative_wrong_audience_401(user_jwt: str):
-    wrong_aud_token = token_endpoint(
-        grant_type="urn:ietf:params:oauth:grant-type:token-exchange",
-        code=None,
-        client_id="enterprise-apigee-gateway",
-        client_secret=None,
-        subject_token=user_jwt,
-        subject_token_type="urn:ietf:params:oauth:token-type:access_token",
-        audience="https://wrong-audience.example.com",
-        scope="tools:read"
-    )["access_token"]
+async def test_live_negative_wrong_audience_401():
+    now = int(time.time())
+    wrong_aud_token = jwt.encode(
+        {
+            "iss": "http://localhost:8081",
+            "sub": "actor:user_developer@example.com",
+            "aud": "https://wrong-audience.example.com",
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token"
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
             f"{BACKEND_URL}/mcp/v1/tools/list",
@@ -168,18 +180,23 @@ async def test_live_negative_unknown_tool_404(exchanged_partner_jwt: str):
         assert resp.status_code == 404
 
 
-async def test_live_positive_own_url_as_audience_200(user_jwt: str):
+async def test_live_positive_own_url_as_audience_200():
     """Verify RFC 8707 dynamic audience matching against the live deployed URL."""
-    self_aud_jwt = token_endpoint(
-        grant_type="urn:ietf:params:oauth:grant-type:token-exchange",
-        code=None,
-        client_id="enterprise-apigee-gateway",
-        client_secret=None,
-        subject_token=user_jwt,
-        subject_token_type="urn:ietf:params:oauth:token-type:access_token",
-        audience=BACKEND_URL,
-        scope="tools:read tools:execute"
-    )["access_token"]
+    now = int(time.time())
+    self_aud_jwt = jwt.encode(
+        {
+            "iss": "http://localhost:8081",
+            "sub": "actor:user_developer@example.com",
+            "aud": BACKEND_URL,
+            "act": {"sub": "enterprise-apigee-gateway"},
+            "scope": "tools:read tools:execute",
+            "iat": now,
+            "exp": now + 900,
+            "token_use": "exchanged_partner_token"
+        },
+        SECRET_KEY,
+        algorithm=ALGORITHM
+    )
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.post(
             f"{BACKEND_URL}/mcp/v1/tools/list",

@@ -356,7 +356,7 @@ make setup
 # Or via Make / pytest:
 make test
 ```
-Runs completely in-process via `httpx.ASGITransport` with zero local port bindings or network dependencies, verifying all positive (`200`) and negative (`401`, `403`, `404`) protocol scenarios:
+Runs completely in-process via `httpx.ASGITransport` with zero local port bindings or network dependencies, verifying all 12 positive (`200`) and negative (`401`, `403`, `404`, `413`, `429`) protocol scenarios:
 - Health probe (`GET /` $\rightarrow$ `200`).
 - RFC 9728 discovery challenge (`GET /.well-known/oauth-protected-resource` $\rightarrow$ `401` + `WWW-Authenticate` header).
 - Missing `Authorization` header rejection (`401`).
@@ -364,15 +364,21 @@ Runs completely in-process via `httpx.ASGITransport` with zero local port bindin
 - Wrong `aud` claim rejection (`401`).
 - Direct corporate user token rejection (`token_use="user_identity"` $\rightarrow$ `403`).
 - Valid RFC 8693 exchanged partner token acceptance on `tools/list` (`200`) and `tools/call` (`search_catalog` $\rightarrow$ `200`).
+- Dynamic RFC 8707 audience matching (`aud` matching the service's own base URL $\rightarrow$ `200`).
+- Hosted `/client-setup` page modes (`CLIENT_SETUP_PAGE=OFF` $\rightarrow$ `404`, `SAFE` $\rightarrow$ `200` redacted, `UNSAFE` $\rightarrow$ `200` visible).
+- POC abuse and FinOps guards (`>16 KB` payload $\rightarrow$ `413`, rate limit exceeded $\rightarrow$ `429`).
 - Unknown tool call rejection (`404`).
 
 #### Opt-In Live Integration Tests (Against a Deployed Backend URL)
-To run the same positive and negative test suite over HTTPS against a deployed backend instance (see [docs/BACKEND.md](docs/BACKEND.md)), use `--live` (which caches the URL in `~/.cache/apigee-mcp-token-exchange/context.json` or prompts interactively if omitted):
+To run the live positive and negative test suite over HTTPS against a deployed backend instance (see [docs/BACKEND.md](docs/BACKEND.md)), use `--live` (which caches the URL and optional `--signing-key` in `~/.cache/apigee-mcp-token-exchange/context.json`, or prompts interactively if omitted):
 ```bash
 # First run (saves URL to XDG cache):
 ./verify --live https://your-mcp-backend.example.com
 
-# Subsequent runs (automatically reuses cached URL):
+# Optional: if deployed with a custom MCP_JWT_SECRET, pass --signing-key once (also cached):
+./verify --live https://your-mcp-backend.example.com --signing-key <YOUR_MCP_JWT_SECRET>
+
+# Subsequent runs (automatically reuses cached URL and signing key):
 ./verify --live
 ```
 
